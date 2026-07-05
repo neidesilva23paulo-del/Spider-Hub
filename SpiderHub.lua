@@ -1,10 +1,12 @@
 --[[
     ================================================================
-                           SPIDER HUB (V1.4)
+                           SPIDER HUB (V1.5)
     ================================================================
-    Aplicação unificada com interface moderna, modular e responsiva.
-    Correções aplicadas: Escopo de chamadas, otimização de varreduras de ESP,
-    sistema resiliente a respawn e tratamento de tipos no Inspetor.
+    Aplicação unificada com interface modular, limpa e responsiva.
+    Melhorias aplicadas:
+    - Progresso dos computadores persistente (sempre em porcentagem).
+    - Integração da funcionalidade "Acelerar Codificação (Crawl Exploit)" do Koala Scripts.
+    - Correções gerais de runtime, escopo e vazamento de memória.
 ]]
 
 -- Serviços do Roblox
@@ -64,6 +66,15 @@ local linVel, alignOri, flyConnection, jumpConnection
 local mouseUnlockActive = false
 local mouseUnlockConnection
 local mouseUnlockBtn = nil
+
+-- Tabela de estado persistente de progresso dos PCs (Evita exibir "Estável")
+local pcProgressTracker = {}
+
+-- Estados do Flee The Facility (Koala Scripts)
+local speedHackCrawlActive = false
+local autoHideFromSeerActive = false
+local lastSeerHidePos = nil
+local hadSeerHide = false
 
 -- Variáveis do Inspetor
 local InspectorActive = false
@@ -630,6 +641,7 @@ local function aplicarComputerESP(model)
 		billboard.Parent = model
 	end
 
+	-- Aplica cor baseada no status físico do monitor
 	local screen = model:FindFirstChild("Screen")
 	if screen then
 		if screen.BrickColor == BrickColor.new("Bright blue") then
@@ -1101,32 +1113,6 @@ local itemListLayout = Instance.new("UIListLayout")
 itemListLayout.Padding = UDim.new(0, 8)
 itemListLayout.Parent = itemScroll
 
-local itemEspActive = false
-
-local function aplicarItemESP(item)
-	if not item:IsA("Tool") or not item:FindFirstChild("Handle") then return end
-	local handle = item.Handle
-	if handle:FindFirstChild("ItemESP_Tag") then return end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "ItemESP_Tag"
-	billboard.Size = UDim2.new(0, 120, 0, 30)
-	billboard.AlwaysOnTop = true
-	billboard.ExtentsOffset = Vector3.new(0, 1.5, 0)
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.Text = "📦 " .. item.Name
-	label.TextColor3 = Color3.fromRGB(0, 220, 150)
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 9
-	label.TextStrokeTransparency = 0.5
-	label.Parent = billboard
-
-	billboard.Parent = handle
-end
-
 criarFrameConfig("Mostrar Nomes de Itens (ESP)", "Desativado", itemScroll, function(btn)
 	itemEspActive = not itemEspActive
 	if itemEspActive then
@@ -1474,12 +1460,6 @@ local chamsBtnCorner = Instance.new("UICorner")
 chamsBtnCorner.CornerRadius = UDim.new(0, 5)
 chamsBtnCorner.Parent = chamsBtn
 
-local function obterCorPeloNome(username)
-	local hash = 0
-	for i = 1, #username do hash = hash + string.byte(username, i) end
-	return Color3.fromHSV((hash % 100) / 100, 0.9, 1)
-end
-
 local function colorirPersonagem(character, targetPlayer)
 	if not character or not targetPlayer or targetPlayer == LocalPlayer or not ChamsActive then return end
 	local corDoJogador = obterCorPeloNome(targetPlayer.Name)
@@ -1766,7 +1746,7 @@ visualLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 end)
 
 -- ==========================================
--- TAB: FLEE THE FACILITY (Otimizado via Koala Scripts)
+-- TAB: FLEE THE FACILITY (Com Funcionalidades do Koala Scripts)
 -- ==========================================
 local ftfScroll = Instance.new("ScrollingFrame")
 ftfScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -1799,7 +1779,7 @@ criarFrameConfig("Nunca Errar Hack (Auto-Hack)", "Desativado", ftfScroll, functi
 	end)
 end)
 
--- 2. ESP de Computadores Dinâmico com Progresso Real-time (Koala Scripts)
+-- 2. ESP de Computadores Dinâmico com Porcentagem Persistente (Tempo Todo Visível)
 local pcProgConnection
 criarFrameConfig("ESP Computadores Dinâmico", "Desativado", ftfScroll, function(btn)
 	ComputerTableESPActive = not ComputerTableESPActive
@@ -1842,11 +1822,14 @@ criarFrameConfig("ESP Computadores Dinâmico", "Desativado", ftfScroll, function
 							end
 						end
 
+						-- Sincroniza e memoriza o progresso para mantê-lo visível o tempo todo
 						if progress then
-							billboard.TextLabel.Text = string.format("PC | Progresso: %d%%", progress)
-						else
-							billboard.TextLabel.Text = "PC | Estável"
+							pcProgressTracker[v] = progress
+						elseif not pcProgressTracker[v] then
+							pcProgressTracker[v] = 0
 						end
+
+						billboard.TextLabel.Text = string.format("PC | Progresso: %d%%", pcProgressTracker[v])
 					end
 				end
 			end
@@ -1862,7 +1845,131 @@ criarFrameConfig("ESP Computadores Dinâmico", "Desativado", ftfScroll, function
 	end
 end)
 
--- 3. ESP de Portas
+-- 3. FUNCIONALIDADE INTEGRADA: Acelerar Codificação (Crawl Exploit)
+local crawlAnim = nil
+criarFrameConfig("Acelerar Codificação [Q]", "Desativado", ftfScroll, function(btn)
+	speedHackCrawlActive = not speedHackCrawlActive
+	btn.Text = speedHackCrawlActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = speedHackCrawlActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	setStatus("Crawl Exploit: " .. (speedHackCrawlActive and "ATIVADO" or "DESATIVADO"))
+end)
+
+-- Loop que gerencia a simulação de agachamento/pulo para acelerar o progresso
+task.spawn(function()
+	while true do
+		task.wait(0.3)
+		if speedHackCrawlActive then
+			pcall(function()
+				local character, _, humanoid = GetCharacter()
+				local stats = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+				
+				if character and humanoid and stats then
+					local actEvent = stats:FindFirstChild("ActionEvent")
+					local currentAnim = stats:FindFirstChild("CurrentAnimation")
+					
+					if actEvent and actEvent.Value and currentAnim and currentAnim.Value == "Typing" then
+						local eventObj = actEvent.Value
+						if eventObj.Parent and eventObj.Parent.Parent and eventObj.Parent.Parent.Name == "ComputerTable" then
+							
+							-- Carrega animação de engatinhar se necessário
+							if not crawlAnim then
+								local animFolder = ReplicatedStorage:FindFirstChild("Animations")
+								local crawlAsset = animFolder and animFolder:FindFirstChild("AnimCrawl")
+								if crawlAsset then
+									crawlAnim = humanoid:LoadAnimation(crawlAsset)
+								end
+							end
+
+							-- Inicia Glitch de Agachamento Rápido
+							if RemoteEvent then
+								RemoteEvent:FireServer("Input", "Crawl", true)
+								humanoid.HipHeight = -2
+								if crawlAnim then crawlAnim:Play(0.1, 1, 0) end
+								humanoid.WalkSpeed = 8
+								
+								task.wait(0.2)
+								
+								-- Restaura estado padrão do corpo
+								RemoteEvent:FireServer("Input", "Crawl", false)
+								humanoid.HipHeight = 0
+								if crawlAnim then crawlAnim:Stop() end
+								humanoid.WalkSpeed = 16
+								
+								-- Força a reconexão imediata ao computador para registrar o progresso acelerado
+								local elapsed = 0
+								repeat
+									elapsed = elapsed + task.wait()
+									RemoteEvent:FireServer("Input", "Trigger", true, eventObj)
+									RemoteEvent:FireServer("Input", "Action", true)
+								until elapsed >= 1.5 or currentAnim.Value == "Typing"
+							end
+						end
+					end
+				end
+			end)
+		end
+	end
+end)
+
+-- 4. Esquivar do Seer Automático ( Locker Auto-Hide )
+criarFrameConfig("Auto-Esconder do Seer", "Desativado", ftfScroll, function(btn)
+	autoHideFromSeerActive = not autoHideFromSeerActive
+	btn.Text = autoHideFromSeerActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = autoHideFromSeerActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+end)
+
+-- Loop Monitor de Habilidades do Seer
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		local screenGuiObj = PlayerGui:FindFirstChild("ScreenGui")
+		local warningFrame = screenGuiObj and screenGuiObj:FindFirstChild("WarningFrame")
+		
+		if warningFrame and warningFrame.Visible and autoHideFromSeerActive then
+			local character, rootPart, humanoid = GetCharacter()
+			local stats = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+			local isBeast = stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true
+
+			if character and rootPart and humanoid and humanoid.Health > 0 and not isBeast and not hadSeerHide then
+				hadSeerHide = true
+				if not lastSeerHidePos then
+					lastSeerHidePos = rootPart.CFrame
+					task.wait(0.2)
+				end
+
+				-- Busca armário mais próximo
+				local closestLocker = nil
+				local closestDistance = math.huge
+				for _, locker in ipairs(CollectionService:GetTagged("LOCKER")) do
+					if locker:IsA("Model") then
+						local dist = (locker:GetPivot().Position - rootPart.Position).Magnitude
+						if dist < closestDistance then
+							closestLocker = locker
+							closestDistance = dist
+						end
+					end
+				end
+
+				if closestLocker then
+					character:PivotTo(closestLocker:GetPivot())
+					setStatus("Teleportado ao armário para esquivar do Seer!")
+				end
+			end
+		elseif lastSeerHidePos and hadSeerHide then
+			-- Retorna ao posto original após segurança
+			task.wait(0.5)
+			local character, _, _ = GetCharacter()
+			if character and lastSeerHidePos then
+				character:PivotTo(lastSeerHidePos)
+			end
+			hadSeerHide = false
+			lastSeerHidePos = nil
+			setStatus("Retornado à posição de hacking.")
+		end
+	end
+end)
+
+-- 5. ESP de Portas
 local doorEspConnection
 criarFrameConfig("ESP Portas (Status)", "Desativado", ftfScroll, function(btn)
 	local doorActive = (btn.Text == "Desativado")
@@ -1916,7 +2023,7 @@ criarFrameConfig("ESP Portas (Status)", "Desativado", ftfScroll, function(btn)
 	end
 end)
 
--- 4. ESP de Células de Congelamento (FreezePod)
+-- 6. ESP de Células de Congelamento (FreezePod)
 criarFrameConfig("Habilitar ESP (FreezePod)", "Desativado", ftfScroll, function(btn)
 	FreezePodESPActive = not FreezePodESPActive
 	if FreezePodESPActive then
@@ -1933,28 +2040,7 @@ criarFrameConfig("Habilitar ESP (FreezePod)", "Desativado", ftfScroll, function(
 	atualizarFreezePodESP()
 end)
 
--- 5. ESP de Saídas e Dutos
-local ftfVisualsActive = false
-local function applyFTFHighlight(name, color)
-	for _, obj in ipairs(Workspace:GetDescendants()) do
-		if obj.Name == name and obj:IsA("Model") then
-			local hl = obj:FindFirstChild("FTF_Highlight")
-			if ftfVisualsActive then
-				if not hl then
-					hl = Instance.new("Highlight")
-					hl.Name = "FTF_Highlight"
-					hl.FillTransparency = 0.5
-					hl.OutlineColor = Color3.new(1, 1, 1)
-					hl.Parent = obj
-				end
-				hl.FillColor = color
-			elseif hl then
-				hl:Destroy()
-			end
-		end
-	end
-end
-
+-- 7. ESP de Saídas e Dutos
 criarFrameConfig("ESP Saídas e Dutos", "Desativado", ftfScroll, function(btn)
 	ftfVisualsActive = not ftfVisualsActive
 	btn.Text = ftfVisualsActive and "Ativado" or "Desativado"
@@ -1964,7 +2050,7 @@ criarFrameConfig("ESP Saídas e Dutos", "Desativado", ftfScroll, function(btn)
 	applyFTFHighlight("AirVent", Color3.fromRGB(100, 100, 100))
 end)
 
--- 6. Silenciar Fera
+-- 8. Silenciar Fera
 criarFrameConfig("Fera Silenciosa (Stealth)", "Executar", ftfScroll, function()
 	local character, _, _ = GetCharacter()
 	if character then
@@ -1982,7 +2068,7 @@ criarFrameConfig("Fera Silenciosa (Stealth)", "Executar", ftfScroll, function()
 	end
 end)
 
--- 7. Sprint Manual
+-- 9. Sprint Manual
 local sprintConnection
 criarFrameConfig("Sprint de Sobrevivência [Q]", "Desativado", ftfScroll, function(btn)
 	local sprintActive = (btn.Text == "Desativado")
@@ -2017,7 +2103,7 @@ criarFrameConfig("Sprint de Sobrevivência [Q]", "Desativado", ftfScroll, functi
 	end
 end)
 
--- 8. Auto-Flop (Evitar Captura)
+-- 10. Auto-Flop (Evitar Captura)
 local autoFlopActive = false
 criarFrameConfig("Auto-Flop (Bugar Captura)", "Desativado", ftfScroll, function(btn)
 	autoFlopActive = not autoFlopActive
@@ -2041,7 +2127,7 @@ task.spawn(function()
 	end
 end)
 
--- 9. Destravar Engatinhar Fera
+-- 11. Destravar Engatinhar Fera
 criarFrameConfig("Destravar Engatinhar Fera", "Executar", ftfScroll, function()
 	pcall(function()
 		LocalPlayer.TempPlayerStatsModule.DisableCrawl.Value = false
@@ -2049,7 +2135,7 @@ criarFrameConfig("Destravar Engatinhar Fera", "Executar", ftfScroll, function()
 	end)
 end)
 
--- 10. Detectar Fera
+-- 12. Detectar Fera
 criarFrameConfig("Quem é a Fera?", "Verificar", ftfScroll, function()
 	local beastName = "Não detectada"
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -2061,7 +2147,7 @@ criarFrameConfig("Quem é a Fera?", "Verificar", ftfScroll, function()
 	setStatus("Fera Atual: " .. beastName)
 end)
 
--- 11. Tempo de Queda (Nocaute) de Sobreviventes (Koala Scripts)
+-- 13. Tempo de Queda (Nocaute) de Sobreviventes (Koala Scripts)
 local ragdollConnection
 criarFrameConfig("ESP Tempo de Queda (Nocaute)", "Desativado", ftfScroll, function(btn)
 	local active = (btn.Text == "Desativado")
@@ -2117,7 +2203,7 @@ criarFrameConfig("ESP Tempo de Queda (Nocaute)", "Desativado", ftfScroll, functi
 	end
 end)
 
--- 12. ESP de Armários (Locker ESP)
+-- 14. ESP de Armários (Locker ESP)
 local lockerESPActive = false
 criarFrameConfig("ESP Armários (Locker ESP)", "Desativado", ftfScroll, function(btn)
 	lockerESPActive = not lockerESPActive
