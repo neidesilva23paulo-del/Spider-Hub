@@ -1,1110 +1,747 @@
---[[
-    ================================================================
-                       SPIDER HUB - FTF EDITION (V2.2)
-    ================================================================
-    Painel de controle com tratamento estrito de escopo e conexões.
-]]
+-- ==========================================
+-- MONTAGEM DOS CONTEÚDOS DAS ABAS DA UI
+-- ==========================================
 
--- Serviços do Roblox
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-local TeleportService = game:GetService("TeleportService")
-local CollectionService = game:GetService("CollectionService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SoundService = game:GetService("SoundService")
+-- ABA: INÍCIO
+do
+	local welcomeLabel = Instance.new("TextLabel")
+	welcomeLabel.Size = UDim2.new(1, 0, 0, 40)
+	welcomeLabel.BackgroundTransparency = 1
+	welcomeLabel.Text = "Bem-vindo ao Spider Hub, " .. LocalPlayer.DisplayName .. "!"
+	welcomeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	welcomeLabel.Font = Enum.Font.GothamBold
+	welcomeLabel.TextSize = 14
+	welcomeLabel.TextXAlignment = Enum.TextXAlignment.Left
+	welcomeLabel.Parent = homePage
 
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-
--- Destruir versão antiga se já existir para evitar duplicidade
-if PlayerGui:FindFirstChild("SpiderHubGui") then
-	PlayerGui.SpiderHubGui:Destroy()
+	local descLabel = Instance.new("TextLabel")
+	descLabel.Size = UDim2.new(1, 0, 0, 120)
+	descLabel.Position = UDim2.new(0, 0, 0, 40)
+	descLabel.BackgroundTransparency = 1
+	descLabel.Text = "Este painel unifica as melhores ferramentas do Koala Scripts para Flee The Facility de forma otimizada e limpa.\n\nAtalhos do Teclado:\n[P] Ativar/Desativar Voo (Fly)\n[N] Ativar/Desativar Noclip\n[Alt] Destravar Cursor"
+	descLabel.TextColor3 = Color3.fromRGB(170, 170, 180)
+	descLabel.Font = Enum.Font.Gotham
+	descLabel.TextSize = 12
+	descLabel.TextWrapped = true
+	descLabel.TextXAlignment = Enum.TextXAlignment.Left
+	descLabel.TextYAlignment = Enum.TextYAlignment.Top
+	descLabel.Parent = homePage
 end
 
--- Instanciação segura do RemoteEvent do jogo
-local RemoteEvent = ReplicatedStorage:FindFirstChild("RemoteEvent")
-if not RemoteEvent then
-	task.spawn(function()
-		RemoteEvent = ReplicatedStorage:WaitForChild("RemoteEvent", 10)
+-- ABA: MOVIMENTAÇÃO
+do
+	local moveScroll = Instance.new("ScrollingFrame")
+	moveScroll.Size = UDim2.new(1, 0, 1, 0)
+	moveScroll.BackgroundTransparency = 1
+	moveScroll.BorderSizePixel = 0
+	moveScroll.ScrollBarThickness = 4
+	moveScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
+	moveScroll.Parent = movePage
+
+	local moveLayout = Instance.new("UIListLayout")
+	moveLayout.Padding = UDim.new(0, 10)
+	moveLayout.Parent = moveScroll
+
+	-- WalkSpeed Configs
+	criarFrameConfig("Habilitar WalkSpeed Hack", "Desativado", moveScroll, function(btn)
+		speedHackEnabled = not speedHackEnabled
+		btn.Text = speedHackEnabled and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = speedHackEnabled and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		if not speedHackEnabled then
+			local _, _, humanoid = GetCharacter()
+			if humanoid then humanoid.WalkSpeed = 16 end
+		end
+	end)
+
+	criarSliderConfig("Ajustar WalkSpeed", "Velocidade de corrida.", 16, 120, 16, moveScroll, function(val)
+		speedHackValue = val
+	end)
+
+	-- JumpPower Configs
+	criarFrameConfig("Habilitar JumpPower Hack", "Desativado", moveScroll, function(btn)
+		jumpHackEnabled = not jumpHackEnabled
+		btn.Text = jumpHackEnabled and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = jumpHackEnabled and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		if not jumpHackEnabled then
+			local _, _, humanoid = GetCharacter()
+			if humanoid then humanoid.JumpPower = 36 end
+		end
+	end)
+
+	criarSliderConfig("Ajustar JumpPower", "Altura de salto.", 36, 250, 36, moveScroll, function(val)
+		jumpHackValue = val
+	end)
+
+	-- Jump Infinito Toggle
+	criarFrameConfig("Habilitar Pulo Infinito", "Desativado", moveScroll, function(btn)
+		infiniteJumpActive = not infiniteJumpActive
+		btn.Text = infiniteJumpActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = infiniteJumpActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
+
+	-- Fly Toggle
+	local flyFrame = Instance.new("Frame")
+	flyFrame.Size = UDim2.new(1, -10, 0, 45)
+	flyFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+	flyFrame.BorderSizePixel = 0
+	flyFrame.Parent = moveScroll
+
+	local flyCorner = Instance.new("UICorner")
+	flyCorner.CornerRadius = UDim.new(0, 6)
+	flyCorner.Parent = flyFrame
+
+	local flyLabel = Instance.new("TextLabel")
+	flyLabel.Size = UDim2.new(0.6, 0, 1, 0)
+	flyLabel.Position = UDim2.new(0, 12, 0, 0)
+	flyLabel.BackgroundTransparency = 1
+	flyLabel.Text = "Habilitar Vôo (Fly) [P]"
+	flyLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+	flyLabel.Font = Enum.Font.GothamBold
+	flyLabel.TextSize = 12
+	flyLabel.TextXAlignment = Enum.TextXAlignment.Left
+	flyLabel.Parent = flyFrame
+
+	flyBtn = Instance.new("TextButton")
+	flyBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
+	flyBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
+	flyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	flyBtn.Text = "Desativado"
+	flyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+	flyBtn.Font = Enum.Font.GothamMedium
+	flyBtn.TextSize = 11
+	flyBtn.BorderSizePixel = 0
+	flyBtn.Parent = flyFrame
+
+	local flyBtnCorner = Instance.new("UICorner")
+	flyBtnCorner.CornerRadius = UDim.new(0, 5)
+	flyBtnCorner.Parent = flyBtn
+
+	flyBtn.MouseButton1Click:Connect(function() toggleFly(flyBtn) end)
+
+	-- Noclip Toggle
+	local noclipFrame = Instance.new("Frame")
+	noclipFrame.Size = UDim2.new(1, -10, 0, 45)
+	noclipFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+	noclipFrame.BorderSizePixel = 0
+	noclipFrame.Parent = moveScroll
+
+	local noclipCorner = Instance.new("UICorner")
+	noclipCorner.CornerRadius = UDim.new(0, 6)
+	noclipCorner.Parent = noclipFrame
+
+	local noclipLabel = Instance.new("TextLabel")
+	noclipLabel.Size = UDim2.new(0.6, 0, 1, 0)
+	noclipLabel.Position = UDim2.new(0, 12, 0, 0)
+	noclipLabel.BackgroundTransparency = 1
+	noclipLabel.Text = "Ativar Noclip [N]"
+	noclipLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+	noclipLabel.Font = Enum.Font.GothamBold
+	noclipLabel.TextSize = 12
+	noclipLabel.TextXAlignment = Enum.TextXAlignment.Left
+	noclipLabel.Parent = noclipFrame
+
+	noclipBtn = Instance.new("TextButton")
+	noclipBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
+	noclipBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
+	noclipBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	noclipBtn.Text = "Desativado"
+	noclipBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+	noclipBtn.Font = Enum.Font.GothamMedium
+	noclipBtn.TextSize = 11
+	noclipBtn.BorderSizePixel = 0
+	noclipBtn.Parent = noclipFrame
+
+	local noclipBtnCorner = Instance.new("UICorner")
+	noclipBtnCorner.CornerRadius = UDim.new(0, 5)
+	noclipBtnCorner.Parent = noclipBtn
+
+	noclipBtn.MouseButton1Click:Connect(function() toggleNoclip(noclipBtn) end)
+
+	moveLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		moveScroll.CanvasSize = UDim2.new(0, 0, 0, moveLayout.AbsoluteContentSize.Y + 15)
 	end)
 end
 
--- ==========================================
--- PRÉ-DECLARAÇÃO DE UPVALUES (CONTROLE DE ESCOPO)
--- ==========================================
-local setStatus
-local GetCharacter
-local obterCorPeloNome
-local IsThereChar
-local TPPlayerSpawn
-local aplicarComputerESP
-local atualizarComputerTableESP
-local aplicarFreezePodESP
-local atualizarFreezePodESP
-local aplicarItemESP
-local atualizarExitESP
-local atualizarLockerESP
-local atualizarVentESP
-local atualizarPlrESP
-local atualizarBeastESP
-local colorirPersonagem
-local monitorarJogador
-local toggleChams
-local toggleFly
-local toggleNoclip
-local toggleMouseUnlock
-local criarTag
-local applyFTFHighlight
-local DoSurvivorFarm
-local DoBeastFarm
-local createTab
-local criarFrameConfig
-local criarSliderConfig
+-- ABA: VISUAL (ESPs E MODIFICADORES)
+do
+	local visualScroll = Instance.new("ScrollingFrame")
+	visualScroll.Size = UDim2.new(1, 0, 1, 0)
+	visualScroll.BackgroundTransparency = 1
+	visualScroll.BorderSizePixel = 0
+	visualScroll.ScrollBarThickness = 4
+	visualScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
+	visualScroll.Parent = visualPage
 
--- Referências aos botões de alternância da UI (Atribuídos na criação)
-local flyBtn, noclipBtn, chamsBtn, compEspBtn, freezeEspBtn, exitEspBtn, lockerEspBtn, ventEspBtn
+	local visualLayout = Instance.new("UIListLayout")
+	visualLayout.Padding = UDim.new(0, 10)
+	visualLayout.Parent = visualScroll
 
--- ==========================================
--- DECLARAÇÃO EXPLÍCITA DE ESTADOS LOCAIS
--- ==========================================
-local FlyActive = false
-local FlySpeed = 50
-local NoclipActive = false
-local ChamsActive = false
-local ComputerTableESPActive = false
-local FreezePodESPActive = false
-local LockerESPActive = false
-local VentESPActive = false
-local ChamsNeon = true
-local ChamsTransparency = 0.4
+	-- ESP Computadores Dinâmico
+	criarFrameConfig("ESP Computadores Dinâmico", "Desativado", visualScroll, function(btn)
+		ComputerTableESPActive = not ComputerTableESPActive
+		btn.Text = ComputerTableESPActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = ComputerTableESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		atualizarComputerTableESP()
+	end)
 
--- Velocidade e Pulo (WalkSpeed/JumpPower)
-local speedHackEnabled = false
-local speedHackValue = 16
-local jumpHackEnabled = false
-local jumpHackValue = 36
-local infiniteJumpActive = false -- Consistência de caixa aplicada
+	-- ESP Portas de Saída
+	criarFrameConfig("ESP Portas de Saída", "Desativado", visualScroll, function(btn)
+		exitDoorESPActive = not exitDoorESPActive
+		btn.Text = exitDoorESPActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = exitDoorESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		atualizarExitESP()
+	end)
 
--- Estados do Flee The Facility (Survivor & Beast Mods)
-local autoHackActive = false
-local speedHackCrawlActive = false
-local autoHideFromSeerActive = false
-local lastSeerHidePos = nil
-local hadSeerHide = false
-local antiPcErrorActive = false
-local beast3rdPersonActive = false
-local slowBeastActive = false
-local unTieEveryoneActive = false
-local unTieMeActive = false
-local beastTieRangeValue = 0
+	-- ESP Armários (Lockers)
+	criarFrameConfig("ESP Armários (Lockers)", "Desativado", visualScroll, function(btn)
+		LockerESPActive = not LockerESPActive
+		btn.Text = LockerESPActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = LockerESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		atualizarLockerESP()
+	end)
 
--- ESPs Avançados (Koala Scripts)
-local showPlrRagTimeActive = false
-local exitDoorESPActive = false
-local nameTagsActive = false
-local ftfVisualsActive = false
+	-- ESP Tubulações (Vents)
+	criarFrameConfig("ESP Tubulações (Vents)", "Desativado", visualScroll, function(btn)
+		VentESPActive = not VentESPActive
+		btn.Text = VentESPActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = VentESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		atualizarVentESP()
+	end)
 
--- Configurações de Auto-Farm (Survivor & Beast)
-local survivorAutoFarmActive = false
-local beastAutoFarmActive = false
-local keepComputerActive = false
-local autoHideHackActive = false
-local useMinimalTeleportActive = true
-local teleportInsteadTweenPCFarmActive = false
-local teleportToFreezePodActive = false
-local teleportToExitDoorActive = false
-local freezePodOnceActive = true
-local exitCancelActive = false
-local waitForSaveActive = false
-local waitSaveDelayValue = 0
-local farmTweenSpeedValue = 16
-local waitTweenFastValue = 12
-local minimumDurationValue = 5
-local studsPerDelayValue = 16
-local triggerPrioritizationValue = 1
-local campHackOutValue = 40
-local campFreezePodOutValue = 40
-local campEscapeOutValue = 40
-local hackBanUnbanTimeValue = 5
-local triggerUnCampOutValue = 5
-local hideBeastNearDistValue = 25
+	-- ESP Células (FreezePods)
+	criarFrameConfig("Habilitar ESP (FreezePod)", "Desativado", visualScroll, function(btn)
+		FreezePodESPActive = not FreezePodESPActive
+		btn.Text = FreezePodESPActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = FreezePodESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		atualizarFreezePodESP()
+	end)
 
--- Variáveis de controle de farms
-local onsurvivorfarm = false
-local OnBeastFarm = false
-local farmtasks = {}
-local pcProgressTracker = {}
-local lpos = nil
-local bnhide = false
-local bnhideelapse = 0
-local noelepse = 0
+	-- Mostrar Progresso Ragdoll de Caídos
+	criarFrameConfig("Mostrar Progresso Ragdoll", "Desativado", visualScroll, function(btn)
+		showPlrRagTimeActive = not showPlrRagTimeActive
+		btn.Text = showPlrRagTimeActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = showPlrRagTimeActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
 
--- Variáveis do Inspetor
-local InspectorActive = false
-local SelectedInstance = nil
-local OriginalColor = nil
-local HighlightEffect = Instance.new("Highlight")
-HighlightEffect.FillColor = Color3.fromRGB(0, 150, 255)
-HighlightEffect.FillTransparency = 0.5
-HighlightEffect.OutlineColor = Color3.fromRGB(255, 255, 255)
-HighlightEffect.Name = "SpiderInspectorHighlight"
+	-- ESP Chams de Cores (Beast / Survivors)
+	local chamsFrame = Instance.new("Frame")
+	chamsFrame.Size = UDim2.new(1, -10, 0, 45)
+	chamsFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+	chamsFrame.BorderSizePixel = 0
+	chamsFrame.Parent = visualScroll
 
-local Mouse = LocalPlayer:GetMouse()
-local inspectorKey = Enum.KeyCode.F4
+	local chamsCorner = Instance.new("UICorner")
+	chamsCorner.CornerRadius = UDim.new(0, 6)
+	chamsCorner.Parent = chamsFrame
 
--- Controle de FPS/Ping
-local lastIteration = tick()
-local frameHistory = {}
-local fps = 0
+	local chamsLabel = Instance.new("TextLabel")
+	chamsLabel.Size = UDim2.new(0.6, 0, 1, 0)
+	chamsLabel.Position = UDim2.new(0, 12, 0, 0)
+	chamsLabel.BackgroundTransparency = 1
+	chamsLabel.Text = "Habilitar ESP (Chams de Cores)"
+	chamsLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+	chamsLabel.Font = Enum.Font.GothamBold
+	chamsLabel.TextSize = 12
+	chamsLabel.TextXAlignment = Enum.TextXAlignment.Left
+	chamsLabel.Parent = chamsFrame
 
--- Tabelas de Armazenamento de UI
-local tabs = {}
-local tabButtons = {}
+	chamsBtn = Instance.new("TextButton")
+	chamsBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
+	chamsBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
+	chamsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+	chamsBtn.Text = "Desativado"
+	chamsBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+	chamsBtn.Font = Enum.Font.GothamMedium
+	chamsBtn.TextSize = 11
+	chamsBtn.BorderSizePixel = 0
+	chamsBtn.Parent = chamsFrame
 
--- Tabelas para rastreamento físico de ESPs
-local BeastHighlights = {}
-local PlrHighlights = {}
-local PlrRagTimeBillboards = {}
-local ExitDoorHighlights = {}
-local PodHighlights = {}
-local LockerHighlights = {}
-local VentHighlights = {}
+	local chamsBtnCorner = Instance.new("UICorner")
+	chamsBtnCorner.CornerRadius = UDim.new(0, 5)
+	chamsBtnCorner.Parent = chamsBtn
 
--- Estatísticas de Gravação
-local StatsConfig = {
-	Recording = false,
-	StartMoney = 0,
-	StartXP = 0,
-	Elapsed = 0
-}
+	chamsBtn.MouseButton1Click:Connect(toggleChams)
 
--- Estados dos Utilitários e Preservação de Valores Originais (Bypass de nil)
-local FullbrightActive = false
-local originalAmbient = Lighting.Ambient
-local originalOutdoor = Lighting.OutdoorAmbient
-local originalShadows = Lighting.GlobalShadows
+	-- FOV Slider
+	criarSliderConfig("Ajustar Campo de Visão (FOV)", "Zoom da câmera do jogo.", 10, 120, 70, visualScroll, function(val)
+		Workspace.CurrentCamera.FieldOfView = val
+	end)
 
-local noFogActive = false
-local originalFogStart = Lighting.FogStart
-local originalFogEnd = Lighting.FogEnd
-local originalAtmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-
-local xrayActive = false
-local originalTransparencies = {} -- Tabela explicitamente definida
-
-local antiVoidActive = false
-local lastSafeCFrame = CFrame.new(0, 50, 0)
-
--- Controle de Conexões de Eventos (Prevenção de vazamento de memória)
-local flyConnection = nil
-local jumpConnection = nil
-local pcProgConnection = nil
-local doorEspConnection = nil
-local ragdollConnection = nil
-local sprintConnection = nil
-local releaseConnection = nil
-local glideConnection = nil
-local antiVoidConnection = nil
-local mouseUnlockConnection = nil
-
--- ==========================================
--- RESOLUÇÃO DO ESCUPO DE FUNÇÕES COMPLEMENTARES
--- ==========================================
-
-GetCharacter = function()
-	local character = LocalPlayer.Character
-	if not character then return nil, nil, nil end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	return character, rootPart, humanoid
-end
-
-obterCorPeloNome = function(username)
-	local hash = 0
-	for i = 1, #username do 
-		hash = hash + string.byte(username, i) 
-	end
-	return Color3.fromHSV((hash % 100) / 100, 0.9, 1)
-end
-
-IsThereChar = function(APlr)
-	local plr = APlr or LocalPlayer
-	if plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
-		return true
-	end
-	return false
-end
-
-TPPlayerSpawn = function()
-	local character, _, _ = GetCharacter()
-	if character then
-		local spawnPad = Workspace:FindFirstChild("LobbySpawnPad")
-		if spawnPad then
-			character:PivotTo(spawnPad.CFrame * CFrame.new(0, 3, 0))
-		end
-	end
-end
-
--- ==========================================
--- COMPONENTES VISUAIS E CONFIGURAÇÕES DE ESP
--- ==========================================
-
-aplicarComputerESP = function(model)
-	if not model:IsA("Model") or model.Name ~= "ComputerTable" then return end
-	
-	local highlight = model:FindFirstChild("ComputerHighlight")
-	if not highlight then
-		highlight = Instance.new("Highlight")
-		highlight.Name = "ComputerHighlight"
-		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-		highlight.OutlineTransparency = 0.2
-		highlight.FillTransparency = 0.4
-		highlight.Parent = model
-	end
-
-	local billboard = model:FindFirstChild("KSBillboard")
-	if not billboard then
-		billboard = Instance.new("BillboardGui")
-		billboard.Name = "KSBillboard"
-		billboard.AlwaysOnTop = true
-		billboard.Size = UDim2.new(0, 250, 0, 25)
-		billboard.StudsOffsetWorldSpace = Vector3.new(0, 1.5, 0)
-
-		local label = Instance.new("TextLabel")
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
-		label.Size = UDim2.new(1, 0, 1, 0)
-		label.TextScaled = true
-		label.RichText = true
-		label.Parent = billboard
-
-		billboard.Parent = model
-	end
-
-	local screen = model:FindFirstChild("Screen")
-	if screen then
-		if screen.BrickColor == BrickColor.new("Bright blue") then
-			highlight.FillColor = Color3.fromRGB(0, 180, 255)
-			billboard.TextLabel.TextColor3 = Color3.fromRGB(0, 180, 255)
-		elseif screen.BrickColor == BrickColor.new("Dark green") then
-			highlight.FillColor = Color3.fromRGB(0, 230, 100)
-			billboard.TextLabel.TextColor3 = Color3.fromRGB(0, 230, 100)
+	-- Fullbright Config
+	criarFrameConfig("Brilho Máximo (Fullbright)", "Desativado", visualScroll, function(btn)
+		FullbrightActive = not FullbrightActive
+		if FullbrightActive then
+			btn.Text = "Ativado"
+			btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+			Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+			Lighting.GlobalShadows = false
 		else
-			highlight.FillColor = Color3.fromRGB(255, 50, 50)
-			billboard.TextLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+			btn.Text = "Desativado"
+			btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+			Lighting.Ambient = originalAmbient
+			Lighting.OutdoorAmbient = originalOutdoor
+			Lighting.GlobalShadows = originalShadows
 		end
-	end
-end
+	end)
 
-atualizarComputerTableESP = function()
-	for _, descendant in ipairs(Workspace:GetDescendants()) do
-		local nomeFormatado = string.lower(descendant.Name)
-		if (nomeFormatado == "computertable" or nomeFormatado == "computer table") and descendant:IsA("Model") then
-			if ComputerTableESPActive then
-				aplicarComputerESP(descendant)
-			else
-				local highlight = descendant:FindFirstChild("ComputerHighlight")
-				if highlight then highlight:Destroy() end
-				local billboard = descendant:FindFirstChild("KSBillboard")
-				if billboard then billboard:Destroy() end
+	-- No Fog Config
+	criarFrameConfig("Remover Névoa (No Fog)", "Desativado", visualScroll, function(btn)
+		noFogActive = not noFogActive
+		if noFogActive then
+			btn.Text = "Ativado"
+			btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			Lighting.FogStart = 999999
+			Lighting.FogEnd = 999999
+			if originalAtmosphere then
+				originalAtmosphere.Parent = nil
+			end
+		else
+			btn.Text = "Desativado"
+			btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+			Lighting.FogStart = originalFogStart
+			Lighting.FogEnd = originalFogEnd
+			if originalAtmosphere then
+				originalAtmosphere.Parent = Lighting
 			end
 		end
-	end
-end
+	end)
 
-aplicarFreezePodESP = function(descendant)
-	local nomeFormatado = string.gsub(string.lower(descendant.Name), " ", "")
-	if nomeFormatado == "freezepod" and descendant:IsA("Model") then
-		local highlight = descendant:FindFirstChild("FreezePodHighlight")
-		if not highlight then
-			highlight = Instance.new("Highlight")
-			highlight.Name = "FreezePodHighlight"
-			highlight.FillColor = Color3.fromRGB(0, 23, 55)
-			highlight.FillTransparency = 0.4
-			highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-			highlight.OutlineTransparency = 0.1
-			highlight.Parent = descendant
-		end
-	end
-end
-
-atualizarFreezePodESP = function()
-	for _, descendant in ipairs(Workspace:GetDescendants()) do
-		local nomeFormatado = string.gsub(string.lower(descendant.Name), " ", "")
-		if nomeFormatado == "freezepod" and descendant:IsA("Model") then
-			if FreezePodESPActive then
-				aplicarFreezePodESP(descendant)
-			else
-				local highlight = descendant:FindFirstChild("FreezePodHighlight")
-				if highlight then highlight:Destroy() end
-			end
-		end
-	end
-end
-
-aplicarItemESP = function(item)
-	if not item:IsA("Tool") or not item:FindFirstChild("Handle") then return end
-	local handle = item.Handle
-	if handle:FindFirstChild("ItemESP_Tag") then return end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "ItemESP_Tag"
-	billboard.Size = UDim2.new(0, 120, 0, 30)
-	billboard.AlwaysOnTop = true
-	billboard.ExtentsOffset = Vector3.new(0, 1.5, 0)
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.Text = "📦 " .. item.Name
-	label.TextColor3 = Color3.fromRGB(0, 220, 150)
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 9
-	label.TextStrokeTransparency = 0.5
-	label.Parent = billboard
-
-	billboard.Parent = handle
-end
-
-atualizarExitESP = function()
-	for _, v in ipairs(ExitDoorHighlights) do pcall(function() v:Destroy() end) end
-	table.clear(ExitDoorHighlights)
-
-	local currentMap = ReplicatedStorage:FindFirstChild("CurrentMap")
-	local mapValue = currentMap and currentMap.Value
-	if exitDoorESPActive and mapValue then
-		for _, v in ipairs(mapValue:GetChildren()) do
-			if v.Name == "ExitDoor" then
-				local highlight = Instance.new("Highlight")
-				highlight.Name = "KHHighlight"
-				highlight.FillColor = Color3.fromRGB(220, 220, 50)
-				highlight.OutlineColor = Color3.fromRGB(255, 255, 100)
-				highlight.Adornee = v
-				highlight.Parent = v
-				table.insert(ExitDoorHighlights, highlight)
-			end
-		end
-	end
-end
-
-atualizarLockerESP = function()
-	for _, v in ipairs(LockerHighlights) do pcall(function() v:Destroy() end) end
-	table.clear(LockerHighlights)
-
-	if LockerESPActive then
-		for _, v in ipairs(CollectionService:GetTagged("LOCKER")) do
-			local highlight = Instance.new("Highlight")
-			highlight.Name = "KHHighlight"
-			highlight.FillColor = Color3.fromRGB(210, 210, 0)
-			highlight.FillTransparency = 0.75
-			highlight.OutlineColor = Color3.fromRGB(230, 230, 0)
-			highlight.OutlineTransparency = 0.25
-			highlight.Adornee = v
-			highlight.Parent = v
-			table.insert(LockerHighlights, highlight)
-		end
-	end
-end
-
-atualizarVentESP = function()
-	for _, v in ipairs(VentHighlights) do pcall(function() v:Destroy() end) end
-	table.clear(VentHighlights)
-
-	local currentMap = ReplicatedStorage:FindFirstChild("CurrentMap")
-	local mapValue = currentMap and currentMap.Value
-	if VentESPActive and mapValue then
-		for _, v in ipairs(mapValue:GetDescendants()) do
-			if v:IsA("BasePart") and string.find(string.lower(v.Name), "ventblock") then
-				local function NewSUI(Face)
-					local sui = Instance.new("SurfaceGui")
-					sui.Name = "KHHighlight"
-					sui.AlwaysOnTop = true
-					sui.Face = Face
-					sui.Adornee = v
-					sui.Parent = v
-
-					local f = Instance.new("Frame")
-					f.BackgroundColor3 = Color3.fromRGB(255, 255, 200)
-					f.BackgroundTransparency = 0.6
-					f.Size = UDim2.new(1, 0, 1, 0)
-					f.Parent = sui
+	-- X-Ray Config
+	criarFrameConfig("Modo Raio-X (X-Ray)", "Desativado", visualScroll, function(btn)
+		xrayActive = not xrayActive
+		if xrayActive then
+			btn.Text = "Ativado"
+			btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			local character, _, _ = GetCharacter()
+			for _, part in ipairs(Workspace:GetDescendants()) do
+				if part:IsA("BasePart") and not part:IsDescendantOf(character) and not part.Parent:FindFirstChildOfClass("Humanoid") then
+					originalTransparencies[part] = part.Transparency
+					part.Transparency = 0.5
 				end
-				NewSUI(Enum.NormalId.Front)
-				NewSUI(Enum.NormalId.Back)
-				NewSUI(Enum.NormalId.Left)
-				NewSUI(Enum.NormalId.Right)
-				NewSUI(Enum.NormalId.Top)
-				NewSUI(Enum.NormalId.Bottom)
-				table.insert(VentHighlights, v)
+			end
+		else
+			btn.Text = "Desativado"
+			btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+			for part, trans in pairs(originalTransparencies) do
+				if part and part.Parent then
+					part.Transparency = trans
+				end
+			end
+			originalTransparencies = {}
+		end
+	end)
+
+	-- Name Tags (ESP) Config
+	criarFrameConfig("Mostrar Tags de Nome (ESP)", "Desativado", visualScroll, function(btn)
+		nameTagsActive = not nameTagsActive
+		if nameTagsActive then
+			btn.Text = "Ativado"
+			btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			for _, player in ipairs(Players:GetPlayers()) do
+				criarTag(player)
+			end
+		else
+			btn.Text = "Desativado"
+			btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+			for _, player in ipairs(Players:GetPlayers()) do
+				if player.Character then
+					local head = player.Character:FindFirstChild("Head")
+					local tag = head and head:FindFirstChild("SpiderNameTag")
+					if tag then tag:Destroy() end
+				end
 			end
 		end
-	end
+	end)
+
+	visualLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		visualScroll.CanvasSize = UDim2.new(0, 0, 0, visualLayout.AbsoluteContentSize.Y + 15)
+	end)
 end
 
-atualizarBeastESP = function()
-	for _, v in ipairs(BeastHighlights) do pcall(function() v:Destroy() end) end
-	table.clear(BeastHighlights)
-	
-	if ChamsActive then
+-- ABA: FLEE THE FACILITY MODS
+do
+	-- 1. Auto-Hack (Sem falhar minigame)
+	criarFrameConfig("Nunca Errar Hack (Auto-Hack)", "Desativado", ftfScroll, function(btn)
+		autoHackActive = not autoHackActive
+		btn.Text = autoHackActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = autoHackActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
+
+	-- 2. Crawl Exploit
+	criarFrameConfig("Acelerar Codificação [Q]", "Desativado", ftfScroll, function(btn)
+		speedHackCrawlActive = not speedHackCrawlActive
+		btn.Text = speedHackCrawlActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = speedHackCrawlActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
+
+	-- 3. Auto-Flop
+	criarFrameConfig("Auto-Flop (Bugar Captura)", "Desativado", ftfScroll, function(btn)
+		autoFlopActive = not autoFlopActive
+		btn.Text = autoFlopActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = autoFlopActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
+
+	-- 4. Locker Auto-Hide (Seer)
+	criarFrameConfig("Auto-Esconder do Seer", "Desativado", ftfScroll, function(btn)
+		autoHideFromSeerActive = not autoHideFromSeerActive
+		btn.Text = autoHideFromSeerActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = autoHideFromSeerActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
+
+	-- 5. Soltar Amarras Automático
+	criarFrameConfig("Auto-Soltar Amarras Fera", "Desativado", ftfScroll, function(btn)
+		unTieMeActive = not unTieMeActive
+		btn.Text = unTieMeActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = unTieMeActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
+
+	-- 6. Terceira Pessoa Fera (Beast 3rd Person)
+	criarFrameConfig("Fera em 3ª Pessoa", "Desativado", ftfScroll, function(btn)
+		beast3rdPersonActive = not beast3rdPersonActive
+		btn.Text = beast3rdPersonActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = beast3rdPersonActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		if not beast3rdPersonActive then
+			local stats = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+			if stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true then
+				LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+			end
+		end
+	end)
+
+	-- 7. Survivor Auto-Farm
+	criarFrameConfig("Sobrevivente Auto-Farm", "Desativado", ftfScroll, function(btn)
+		survivorAutoFarmActive = not survivorAutoFarmActive
+		btn.Text = survivorAutoFarmActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = survivorAutoFarmActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		if survivorAutoFarmActive then
+			DoSurvivorFarm()
+		end
+	end)
+
+	-- 8. Beast Auto-Farm
+	criarFrameConfig("Fera Auto-Farm", "Desativado", ftfScroll, function(btn)
+		beastAutoFarmActive = not beastAutoFarmActive
+		btn.Text = beastAutoFarmActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = beastAutoFarmActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		if beastAutoFarmActive then
+			DoBeastFarm()
+		end
+	end)
+
+	-- Sliders do Auto Farm
+	criarSliderConfig("Beast Camp Timeout (PC)", "Segundos limites de camp.", 20, 60, 40, ftfScroll, function(val) campHackOutValue = val end)
+	criarSliderConfig("Beast Camp Timeout (Pods)", "Segundos limites de camp.", 20, 60, 40, ftfScroll, function(val) campFreezePodOutValue = val end)
+	criarSliderConfig("Tween Speed (Survivor)", "Velocidade em blocos/s.", 10, 30, 16, ftfScroll, function(val) farmTweenSpeedValue = val end)
+	criarSliderConfig("Delay de Teleporte (Anti-Cheat)", "Segurança contra detecção.", 5, 20, 12, ftfScroll, function(val) waitTweenFastValue = val end)
+end
+
+-- ABA: TROLLING ( Sound board, Slow Beast, Untie All, Fling Beast )
+do
+	local trollScroll = Instance.new("ScrollingFrame")
+	trollScroll.Size = UDim2.new(1, 0, 1, 0)
+	trollScroll.BackgroundTransparency = 1
+	trollScroll.BorderSizePixel = 0
+	trollScroll.ScrollBarThickness = 4
+	trollScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
+	trollScroll.Parent = trollPage
+
+	local trollLayout = Instance.new("UIListLayout")
+	trollLayout.Padding = UDim.new(0, 10)
+	trollLayout.Parent = trollScroll
+
+	-- Lentidão na Fera (Jumped exploit)
+	criarFrameConfig("Lentidão Extrema na Fera", "Desativado", trollScroll, function(btn)
+		slowBeastActive = not slowBeastActive
+		btn.Text = slowBeastActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = slowBeastActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
+
+	-- Libertar Todos (Hammer click exploit)
+	criarFrameConfig("Auto-Soltar Todos (Hammer Exploit)", "Desativado", trollScroll, function(btn)
+		unTieEveryoneActive = not unTieEveryoneActive
+		btn.Text = unTieEveryoneActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = unTieEveryoneActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	end)
+
+	-- Arremessar Fera (Fling Beast)
+	criarFrameConfig("Arremessar Fera (Fling Beast)", "Executar", trollScroll, function()
+		local character, rootPart, _ = GetCharacter()
+		if not character or not rootPart then 
+			setStatus("Personagem indisponível.")
+			return 
+		end
+		
+		local targetBeast = nil
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character then
 				local stats = p:FindFirstChild("TempPlayerStatsModule")
 				if stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true then
-					local highlight = Instance.new("Highlight")
-					highlight.Name = "KHHighlight"
-					highlight.FillColor = Color3.fromRGB(200, 50, 50)
-					highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
-					highlight.Adornee = p.Character
-					highlight.Parent = p.Character
-					table.insert(BeastHighlights, highlight)
+					targetBeast = p
+					break
 				end
 			end
 		end
+
+		if targetBeast and targetBeast.Character and targetBeast.Character:FindFirstChild("HumanoidRootPart") then
+			local bRoot = targetBeast.Character.HumanoidRootPart
+			setStatus("Flinging " .. targetBeast.DisplayName)
+			
+			local originalPos = rootPart.CFrame
+			local t = tick()
+			while tick() - t < 1.5 do
+				RunService.Heartbeat:Wait()
+				rootPart.CFrame = bRoot.CFrame * CFrame.new(0, 0, 0.5)
+				rootPart.AssemblyLinearVelocity = Vector3.new(0, 50000, 0)
+				rootPart.AssemblyAngularVelocity = Vector3.new(0, 50000, 0)
+			end
+			rootPart.AssemblyLinearVelocity = Vector3.zero
+			rootPart.AssemblyAngularVelocity = Vector3.zero
+			rootPart.CFrame = originalPos
+			setStatus("Fling executado.")
+		else
+			setStatus("Fera não encontrada ou inválida.")
+		end
+	end)
+
+	-- Painel Sound board
+	local soundHeader = Instance.new("TextLabel")
+	soundHeader.Size = UDim2.new(1, 0, 0, 25)
+	soundHeader.BackgroundTransparency = 1
+	soundHeader.Text = "🎵 SOUND BOARD TROLL (Spam e Play)"
+	soundHeader.TextColor3 = Color3.fromRGB(130, 50, 200)
+	soundHeader.Font = Enum.Font.GothamBold
+	soundHeader.TextSize = 12
+	soundHeader.TextXAlignment = Enum.TextXAlignment.Left
+	soundHeader.Parent = trollScroll
+
+	local function tocarSom(nomeSom)
+		pcall(function()
+			local som = SoundService:FindFirstChild(nomeSom, true) or ReplicatedStorage:FindFirstChild(nomeSom, true)
+			if som and som:IsA("Sound") then
+				som:Play()
+				setStatus("Tocado: " .. nomeSom)
+			else
+				local monitor = Workspace:FindFirstChild("ComputerTable", true)
+				local screen = monitor and monitor:FindFirstChild("Screen")
+				local errorSound = screen and screen:FindFirstChild("ErrorSound")
+				if errorSound and nomeSom == "ErrorSound" then
+					errorSound:Play()
+					setStatus("Tocado: ErrorSound")
+				end
+			end
+		end)
 	end
+
+	criarFrameConfig("Tocar Erro de Hack (ErrorSound)", "Executar", trollScroll, function() tocarSom("ErrorSound") end)
+	criarFrameConfig("Tocar Alarme de Saída (Siren)", "Executar", trollScroll, function() tocarSom("SoundExitsUnlock") end)
+	criarFrameConfig("Tocar Sinal Correto (CorrectSound)", "Executar", trollScroll, function() tocarSom("CorrectSound") end)
+	criarFrameConfig("Tocar Sinal de Alerta (WarningSound)", "Executar", trollScroll, function() tocarSom("WarningSound") end)
+
+	trollLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		trollScroll.CanvasSize = UDim2.new(0, 0, 0, trollLayout.AbsoluteContentSize.Y + 20)
+	end)
 end
 
-atualizarPlrESP = function()
-	for _, v in ipairs(PlrHighlights) do pcall(function() v:Destroy() end) end
-	table.clear(PlrHighlights)
+-- ==========================================
+-- SUB-SISTEMA UTILITÁRIO: GRAVAÇÃO E SESSÃO
+-- ==========================================
+do
+	local statsScroll = Instance.new("ScrollingFrame")
+	statsScroll.Size = UDim2.new(1, 0, 1, 0)
+	statsScroll.BackgroundTransparency = 1
+	statsScroll.BorderSizePixel = 0
+	statsScroll.ScrollBarThickness = 4
+	statsScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
+	statsScroll.Parent = utilsPage
 
-	if ChamsActive then
+	local statsLayout = Instance.new("UIListLayout")
+	statsLayout.Padding = UDim.new(0, 10)
+	statsLayout.Parent = statsScroll
+
+	local function criarLabelStats(texto)
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, -10, 0, 25)
+		label.BackgroundTransparency = 1
+		label.Text = texto
+		label.TextColor3 = Color3.fromRGB(200, 200, 210)
+		label.Font = Enum.Font.GothamMedium
+		label.TextSize = 11
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = statsScroll
+		return label
+	end
+
+	criarFrameConfig("Gravação de Estatísticas", "Iniciar", statsScroll, function(btn)
+		if not StatsConfig.Recording then
+			btn.Text = "Parar"
+			btn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+			
+			local statsFolder = LocalPlayer:FindFirstChild("SavedPlayerStatsModule")
+			StatsConfig.StartXP = statsFolder and statsFolder:FindFirstChild("Xp") and statsFolder.Xp.Value or 0
+			StatsConfig.StartMoney = statsFolder and statsFolder:FindFirstChild("Credits") and statsFolder.Credits.Value or 0
+			StatsConfig.Elapsed = 0
+			StatsConfig.Recording = true
+		else
+			btn.Text = "Iniciar"
+			btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+			StatsConfig.Recording = false
+		end
+	end)
+
+	RecordElapsed = criarLabelStats("Tempo Decorrido: 0:00:00")
+	MoneyStats = criarLabelStats("Total Credits: 0C")
+	XPStats = criarLabelStats("Total XP: 0XP")
+	MoneyStatsHour = criarLabelStats("Credits por Hora: 0C/h")
+	XPStatsHour = criarLabelStats("XP por Hora: 0XP/h")
+
+	statsLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		statsScroll.CanvasSize = UDim2.new(0, 0, 0, statsLayout.AbsoluteContentSize.Y + 20)
+	end)
+end
+
+-- ==========================================
+-- GESTÃO DE LOOP DE EXECUÇÃO EM TEMPO REAL E TECLADO
+-- ==========================================
+
+RunService.Heartbeat:Connect(function(dt)
+	-- 1. Loops de Velocidade e Pulo (WalkSpeed/JumpPower)
+	local character, _, humanoid = GetCharacter()
+	if character and humanoid then
+		if speedHackEnabled then
+			humanoid.WalkSpeed = speedHackValue
+		end
+		if jumpHackEnabled then
+			humanoid.JumpPower = jumpHackValue
+		end
+	end
+
+	-- 2. Anti PC Error
+	if antiPcErrorActive then
+		if RemoteEvent then
+			pcall(function()
+				RemoteEvent:FireServer("SetPlayerMinigameResult", true)
+			end)
+		end
+	end
+
+	-- 3. Terceira Pessoa Fera (Beast 3rd Person camera lock bypass)
+	if beast3rdPersonActive then
+		local stats = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+		if stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true then
+			LocalPlayer.CameraMinZoomDistance = 0.5
+			LocalPlayer.CameraMode = Enum.CameraMode.Classic
+		end
+	end
+
+	-- 4. Troll Lógica: Lerdeza na Fera (Jumped exploit)
+	if slowBeastActive then
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer and p.Character then
 				local stats = p:FindFirstChild("TempPlayerStatsModule")
-				local isBeast = stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true
-				if not isBeast then
-					local highlight = Instance.new("Highlight")
-					highlight.Name = "KHHighlight"
-					highlight.FillColor = Color3.fromRGB(0, 230, 0)
-					highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
-					highlight.Adornee = p.Character
-					highlight.Parent = p.Character
-					table.insert(PlrHighlights, highlight)
+				if stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true then
+					local bPowers = p.Character:FindFirstChild("BeastPowers")
+					local pEvt = bPowers and bPowers:FindFirstChild("PowersEvent")
+					if pEvt then
+						pEvt:FireServer("Jumped")
+					end
 				end
 			end
 		end
 	end
-end
 
-colorirPersonagem = function(character, targetPlayer)
-	if not character or not targetPlayer or targetPlayer == LocalPlayer or not ChamsActive then return end
-	
-	local stats = targetPlayer:FindFirstChild("TempPlayerStatsModule")
-	local isBeast = stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true
-	local corDoJogador = isBeast and Color3.fromRGB(230, 50, 50) or Color3.fromRGB(50, 230, 50)
-
-	local highlight = character:FindFirstChild("ColorChamsHighlight")
-	if not highlight then
-		highlight = Instance.new("Highlight")
-		highlight.Name = "ColorChamsHighlight"
-		highlight.FillColor = corDoJogador
-		highlight.FillTransparency = ChamsTransparency
-		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-		highlight.OutlineTransparency = 0.2
-		highlight.Parent = character
-	end
-
-	for _, part in ipairs(character:GetDescendants()) do
-		if part:IsA("BasePart") then
-			part.Color = corDoJogador
-			if ChamsNeon then part.Material = Enum.Material.Neon end
-		elseif part:IsA("Shirt") or part:IsA("Pants") or part:IsA("ShirtGraphic") then
-			part:Destroy()
-		end
-	end
-end
-
-monitorarJogador = function(targetPlayer)
-	if targetPlayer == LocalPlayer then return end
-	local function noCharacterAdded(character)
-		task.wait(0.1)
-		if ChamsActive then colorirPersonagem(character, targetPlayer) end
-		character.DescendantAdded:Connect(function(desc)
-			if ChamsActive and desc:IsA("BasePart") then
-				task.wait()
-				local stats = targetPlayer:FindFirstChild("TempPlayerStatsModule")
-				local isBeast = stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true
-				desc.Color = isBeast and Color3.fromRGB(230, 50, 50) or Color3.fromRGB(50, 230, 50)
-				if ChamsNeon then desc.Material = Enum.Material.Neon end
-			end
-		end)
-	end
-	if targetPlayer.Character then task.spawn(noCharacterAdded, targetPlayer.Character) end
-	targetPlayer.CharacterAdded:Connect(noCharacterAdded)
-end
-
-toggleChams = function()
-	ChamsActive = not ChamsActive
-	if ChamsActive then
-		if chamsBtn then
-			chamsBtn.Text = "Ativado"
-			chamsBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-			chamsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		end
-		setStatus("Chams Ativados.")
-		for _, otherPlayer in ipairs(Players:GetPlayers()) do
-			if otherPlayer.Character then colorirPersonagem(otherPlayer.Character, otherPlayer) end
-		end
-	else
-		if chamsBtn then
-			chamsBtn.Text = "Desativado"
-			chamsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-			chamsBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-		end
-		setStatus("Chams Desativados.")
-		for _, otherPlayer in ipairs(Players:GetPlayers()) do
-			if otherPlayer.Character then
-				local hl = otherPlayer.Character:FindFirstChild("ColorChamsHighlight")
-				if hl then hl:Destroy() end
-			end
-		end
-	end
-end
-
-criarTag = function(player)
-	if player == LocalPlayer or not player.Character then return end
-	local head = player.Character:WaitForChild("Head", 5)
-	if not head or head:FindFirstChild("SpiderNameTag") then return end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "SpiderNameTag"
-	billboard.Size = UDim2.new(0, 100, 0, 40)
-	billboard.AlwaysOnTop = true
-	billboard.ExtentsOffset = Vector3.new(0, 2.5, 0)
-
-	local textLabel = Instance.new("TextLabel")
-	textLabel.Size = UDim2.new(1, 0, 1, 0)
-	textLabel.BackgroundTransparency = 1
-	textLabel.TextColor3 = Color3.fromRGB(150, 80, 255)
-	textLabel.Font = Enum.Font.GothamBold
-	textLabel.TextSize = 10
-	textLabel.TextStrokeTransparency = 0.5
-	textLabel.Parent = billboard
-
-	billboard.Parent = head
-
-	task.spawn(function()
-		while nameTagsActive and billboard and billboard.Parent do
-			local char = player.Character
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			local _, myRoot, _ = GetCharacter()
-			local targetRoot = char and char:FindFirstChild("HumanoidRootPart")
-
-			if hum and myRoot and targetRoot then
-				local dist = math.round((myRoot.Position - targetRoot.Position).Magnitude)
-				textLabel.Text = string.format("%s\nHP: %d | Dist: %dm", player.DisplayName, hum.Health, dist)
-			end
-			task.wait(0.2)
-		end
-		billboard:Destroy()
-	end)
-end
-
-applyFTFHighlight = function(name, color)
-	for _, obj in ipairs(Workspace:GetDescendants()) do
-		if obj.Name == name and obj:IsA("Model") then
-			local hl = obj:FindFirstChild("FTF_Highlight")
-			if ftfVisualsActive then
-				if not hl then
-					hl = Instance.new("Highlight")
-					hl.Name = "FTF_Highlight"
-					hl.FillTransparency = 0.5
-					hl.OutlineColor = Color3.new(1,1,1)
-					hl.Parent = obj
+	-- 5. Troll Lógica: Soltar Todos do Martelo (Hammer Exploit)
+	if unTieEveryoneActive or unTieMeActive then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character then
+				local stats = p:FindFirstChild("TempPlayerStatsModule")
+				if stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true then
+					local hammer = p.Character:FindFirstChild("Hammer")
+					local hEvt = hammer and hammer:FindFirstChild("HammerEvent")
+					if hEvt then
+						if unTieEveryoneActive then
+							hEvt:FireServer("HammerClick", true)
+						end
+						if unTieMeActive and character then
+							for _, rope in ipairs(p.Character:GetDescendants()) do
+								if rope:IsA("RopeConstraint") then
+									if (rope.Attachment0 and rope.Attachment0:IsDescendantOf(character)) or (rope.Attachment1 and rope.Attachment1:IsDescendantOf(character)) then
+										hEvt:FireServer("HammerClick", true)
+									end
+								end
+							end
+						end
+					end
 				end
-				hl.FillColor = color
-			elseif hl then
-				hl:Destroy()
 			end
 		end
 	end
-end
 
--- ==========================================
--- SINAL E LOGICA DE CONTROLE DE MOVIMENTACAO (DEFINIÇÃO)
--- ==========================================
+	-- 6. Atualização do Monitoramento de Estatísticas de Partida (Credits e XP)
+	if StatsConfig.Recording then
+		StatsConfig.Elapsed = StatsConfig.Elapsed + dt
+		local statsFolder = LocalPlayer:FindFirstChild("SavedPlayerStatsModule")
+		local currentXP = statsFolder and statsFolder:FindFirstChild("Xp") and statsFolder.Xp.Value
+		local currentCredits = statsFolder and statsFolder:FindFirstChild("Credits") and statsFolder.Credits.Value
 
-toggleMouseUnlock = function()
-	mouseUnlockActive = not mouseUnlockActive
-	if mouseUnlockActive then
-		if mouseUnlockBtn then
-			mouseUnlockBtn.Text = "Ativado"
-			mouseUnlockBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-			mouseUnlockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		end
-		mouseUnlockConnection = RunService.RenderStepped:Connect(function()
-			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-		end)
-	else
-		if mouseUnlockBtn then
-			mouseUnlockBtn.Text = "Desativado"
-			mouseUnlockBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-			mouseUnlockBtn.TextColor3 = Color3.fromRGB(180, 180, 190)
-		end
-		if mouseUnlockConnection then
-			mouseUnlockConnection:Disconnect()
-			mouseUnlockConnection = nil
-		end
-	end
-end
-
-updateFlyPhysics = function()
-	local _, rootPart, _ = GetCharacter()
-	if not rootPart then return end
-
-	local att = rootPart:FindFirstChild("RootAttachment") or Instance.new("Attachment", rootPart)
-
-	if not linVel then
-		linVel = Instance.new("LinearVelocity")
-		linVel.Attachment0 = att
-		linVel.RelativeTo = Enum.ActuatorRelativeTo.World
-		linVel.MaxForce = math.huge
-		linVel.VectorVelocity = Vector3.zero
-	end
-
-	if not alignOri then
-		alignOri = Instance.new("AlignOrientation")
-		alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
-		alignOri.Attachment0 = att
-		alignOri.RigidityEnabled = true
-	end
-
-	linVel.Parent = rootPart
-	alignOri.Parent = rootPart
-end
-
-toggleFly = function(btn)
-	local _, rootPart, humanoid = GetCharacter()
-	if not rootPart or not humanoid then return end
-
-	updateFlyPhysics()
-	FlyActive = not FlyActive
-	humanoid.PlatformStand = FlyActive
-	linVel.Enabled = FlyActive
-	alignOri.Enabled = FlyActive
-
-	if FlyActive then
-		if btn then
-			btn.Text = "Ativado"
-			btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		end
-
-		if flyConnection then
-			flyConnection:Disconnect()
-		end
-
-		flyConnection = RunService.Heartbeat:Connect(function()
-			local character, currentRoot, _ = GetCharacter()
-			if not character or not currentRoot then return end
+		if currentXP and currentCredits then
+			local totalCredits = currentCredits - StatsConfig.StartMoney
+			local totalXP = currentXP - StatsConfig.StartXP
+			if MoneyStats then MoneyStats.Text = "Total Credits: " .. tostring(totalCredits) .. "C" end
+			if XPStats then XPStats.Text = "Total XP: " .. tostring(totalXP) .. "XP" end
+			if MoneyStatsHour then MoneyStatsHour.Text = "Credits por Hora: " .. tostring(math.ceil(totalCredits / (StatsConfig.Elapsed / 3600))) .. "C/h" end
+			if XPStatsHour then XPStatsHour.Text = "XP por Hora: " .. tostring(math.ceil(totalXP / (StatsConfig.Elapsed / 3600))) .. "XP/h" end
 			
-			local cam = Workspace.CurrentCamera
-			local dir = Vector3.zero
-
-			if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
-			if UserInputService:IsKeyDown(Enum.KeyCode.E) then dir += Vector3.new(0, 1, 0) end
-			if UserInputService:IsKeyDown(Enum.KeyCode.Q) then dir -= Vector3.new(0, 1, 0) end
-
-			if dir.Magnitude > 0 then dir = dir.Unit end
-			if linVel then linVel.VectorVelocity = dir * FlySpeed end
-			if alignOri then alignOri.CFrame = cam.CFrame end
-		end)
-	else
-		if btn then
-			btn.Text = "Desativado"
-			btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-		end
-
-		if flyConnection then 
-			flyConnection:Disconnect() 
-			flyConnection = nil 
-		end
-		if linVel then linVel.VectorVelocity = Vector3.zero end
-	end
-end
-
-toggleNoclip = function(btn)
-	NoclipActive = not NoclipActive
-	if NoclipActive then
-		if btn then
-			btn.Text = "Ativado"
-			btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		end
-	else
-		if btn then
-			btn.Text = "Desativado"
-			btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-		end
-	end
-end
-
--- ==========================================
--- GESTÃO DE INTELIGÊNCIA ARTIFICIAL: ENGINE DE AUTO-FARM (DEFINIÇÃO)
--- ==========================================
-
-DoSurvivorFarm = function()
-	local function PlayerReady()
-		local stats = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
-		if not stats or stats.IsBeast.Value or stats.Health.Value <= 0 or not IsThereChar() then
-			return false
-		end
-		return true
-	end
-
-	local function TaskGood()
-		local isGameActiveVal = false
-		pcall(function()
-			isGameActiveVal = ReplicatedStorage.IsGameActive.Value
-		end)
-		if string.find(string.lower(ReplicatedStorage.GameStatus.Value), "game over") or string.find(string.lower(ReplicatedStorage.GameStatus.Value), "intermission") or not PlayerReady() or not isGameActiveVal then
-			return false
-		end
-		return true
-	end
-
-	local function GetMapObjects()
-		local Result = {Computers = {}, FreezePods = {}, ExitDoors = {}}
-		local currentMap = ReplicatedStorage:FindFirstChild("CurrentMap")
-		local mapValue = currentMap and currentMap.Value
-
-		if mapValue then
-			for _, v in ipairs(mapValue:GetChildren()) do
-				if v.Name == "ComputerTable" then
-					table.insert(Result.Computers, v)
-				elseif v.Name == "FreezePod" then
-					table.insert(Result.FreezePods, v)
-				elseif v.Name == "ExitDoor" then
-					table.insert(Result.ExitDoors, v)
-				end
+			local hours = math.floor(StatsConfig.Elapsed / 3600)
+			local minutes = math.floor((StatsConfig.Elapsed % 3600) / 60)
+			local seconds = math.floor(StatsConfig.Elapsed % 60)
+			if RecordElapsed then
+				RecordElapsed.Text = string.format("Tempo Decorrido: %d:%02d:%02d", hours, minutes, seconds)
 			end
 		end
-		return Result
 	end
 
-	task.spawn(function()
-		while survivorAutoFarmActive and TaskGood() do
-			local objects = GetMapObjects()
-			local character, rootPart, _ = GetCharacter()
+	-- 7. ESP de Caídos (Downed RagTime)
+	if showPlrRagTimeActive then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer and p.Character then
+				local stats = p:FindFirstChild("TempPlayerStatsModule")
+				local isDowned = stats and stats:FindFirstChild("Ragdoll") and stats.Ragdoll.Value == true
+				local progress = stats and stats:FindFirstChild("ActionProgress")
 
-			if character and rootPart then
-				local hackedAll = true
-				for _, comp in ipairs(objects.Computers) do
-					if comp:FindFirstChild("Screen") and comp.Screen.BrickColor ~= BrickColor.new("Dark green") then
-						hackedAll = false
-						local trigger = comp:FindFirstChild("ComputerTrigger1") or comp:FindFirstChild("ComputerTrigger2") or comp:FindFirstChild("ComputerTrigger3")
-						if trigger then
-							rootPart.CFrame = trigger.CFrame
-							task.wait(1)
-							
-							repeat
-								task.wait(0.2)
-								if RemoteEvent then
-									pcall(function()
-										RemoteEvent:FireServer("Input", "Trigger", true, trigger.Event)
-										RemoteEvent:FireServer("Input", "Action", true)
-									end)
-								end
-							until comp.Screen.BrickColor == BrickColor.new("Dark green") or not survivorAutoFarmActive or not TaskGood()
-						end
+				local billboard = p.Character:FindFirstChild("PlrRagTimeBillboard")
+
+				if isDowned and progress then
+					if not billboard then
+						billboard = Instance.new("BillboardGui")
+						billboard.Name = "PlrRagTimeBillboard"
+						billboard.AlwaysOnTop = true
+						billboard.Size = UDim2.new(0, 180, 0, 30)
+						billboard.ExtentsOffsetWorldSpace = Vector3.new(0, 1.5, 0)
+
+						local label = Instance.new("TextLabel")
+						label.BackgroundTransparency = 1
+						label.TextColor3 = Color3.fromRGB(255, 50, 50)
+						label.Font = Enum.Font.GothamBold
+						label.Size = UDim2.new(1, 0, 1, 0)
+						label.TextScaled = true
+						label.Parent = billboard
+
+						billboard.Parent = p.Character
 					end
-				end
-
-				if hackedAll and not exitCancelActive then
-					for _, exit in ipairs(objects.ExitDoors) do
-						local trigger = exit:FindFirstChild("ExitDoorTrigger")
-						if trigger then
-							rootPart.CFrame = trigger.CFrame
-							task.wait(1)
-							repeat
-								task.wait(0.2)
-								if RemoteEvent then
-									pcall(function()
-										RemoteEvent:FireServer("Input", "Trigger", true, trigger.Event)
-										RemoteEvent:FireServer("Input", "Action", true)
-									end)
-								end
-							until not exit:FindFirstChild("ExitDoorTrigger") or not survivorAutoFarmActive or not TaskGood()
-						else
-							local area = exit:FindFirstChild("ExitArea")
-							if area then
-								rootPart.CFrame = area.CFrame
-								task.wait(2)
-							end
-						end
-					end
+					billboard.TextLabel.Text = string.format("%s | Caído: %d%%", p.DisplayName, math.floor(progress.Value * 100))
+				elseif billboard then
+					billboard:Destroy()
 				end
 			end
-			task.wait(1)
 		end
-		onsurvivorfarm = false
-	end)
-end
-
-DoBeastFarm = function()
-	local function IsTaskGood()
-		local isGameActiveVal = false
-		pcall(function()
-			isGameActiveVal = ReplicatedStorage.IsGameActive.Value
-		end)
-		if string.find(string.lower(ReplicatedStorage.GameStatus.Value), "game over") or string.find(string.lower(ReplicatedStorage.GameStatus.Value), "intermission") or not beastAutoFarmActive or not isGameActiveVal then
-			return false
-		end
-		return true
 	end
-
-	task.spawn(function()
-		while beastAutoFarmActive and IsTaskGood() do
-			local character, rootPart, _ = GetCharacter()
-			if character and rootPart then
-				for _, p in ipairs(Players:GetPlayers()) do
-					if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Torso") then
-						local stats = p:FindFirstChild("TempPlayerStatsModule")
-						local isBeast = stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true
-						if stats and stats.Health.Value > 0 and stats.Captured.Value == false and not isBeast and stats.Ragdoll.Value == false then
-							rootPart.CFrame = p.Character.Torso.CFrame
-							task.wait(0.2)
-
-							local hammer = character:FindFirstChild("Hammer")
-							if hammer and hammer:FindFirstChild("HammerEvent") then
-								pcall(function()
-									hammer.HammerEvent:FireServer("HammerHit", p.Character.Torso)
-								end)
-							end
-							task.wait(1)
-						end
-					end
-				end
-			end
-			task.wait(1)
-		end
-		OnBeastFarm = false
-	end)
-end
-
--- ==========================================
--- SISTEMA DE INTERFACE GRÁFICA (CONSTRUTOR)
--- ==========================================
-
-createTab = function(tabName)
-	local page = Instance.new("Frame")
-	page.Size = UDim2.new(1, 0, 1, -20)
-	page.BackgroundTransparency = 1
-	page.Visible = false
-	page.Parent = contentContainer
-
-	tabs[tabName] = page
-
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0.9, 0, 0, 32)
-	btn.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-	btn.BackgroundTransparency = 1
-	btn.Text = "   " .. tabName
-	btn.TextColor3 = Color3.fromRGB(160, 160, 170)
-	btn.Font = Enum.Font.GothamMedium
-	btn.TextSize = 11
-	btn.TextXAlignment = Enum.TextXAlignment.Left
-	btn.BorderSizePixel = 0
-	btn.Parent = sidebar
-
-	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 6)
-	btnCorner.Parent = btn
-
-	local activeIndicator = Instance.new("Frame")
-	activeIndicator.Size = UDim2.new(0, 3, 0.5, 0)
-	activeIndicator.Position = UDim2.new(0, 4, 0.25, 0)
-	activeIndicator.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-	activeIndicator.BorderSizePixel = 0
-	activeIndicator.BackgroundTransparency = 1
-	activeIndicator.Parent = btn
-
-	local indicatorCorner = Instance.new("UICorner")
-	indicatorCorner.CornerRadius = UDim.new(0, 2)
-	indicatorCorner.Parent = activeIndicator
-
-	tabButtons[tabName] = btn
-
-	btn.MouseEnter:Connect(function()
-		if not page.Visible then
-			TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundTransparency = 0.93, TextColor3 = Color3.fromRGB(220, 220, 230)}):Play()
-		end
-	end)
-
-	btn.MouseLeave:Connect(function()
-		if not page.Visible then
-			TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(160, 160, 170)}):Play()
-		end
-	end)
-
-	btn.MouseButton1Click:Connect(function()
-		for name, p in pairs(tabs) do
-			local isTarget = (name == tabName)
-			local currentBtn = tabButtons[name]
-			local indicator = currentBtn:FindFirstChildOfClass("Frame")
-
-			p.Visible = isTarget
-			if isTarget then
-				TweenService:Create(currentBtn, TweenInfo.new(0.1), {BackgroundTransparency = 0.88, BackgroundColor3 = Color3.fromRGB(130, 50, 200), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-				if indicator then
-					TweenService:Create(indicator, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play()
-				end
-			else
-				TweenService:Create(currentBtn, TweenInfo.new(0.1), {BackgroundTransparency = 1, BackgroundColor3 = Color3.fromRGB(24, 24, 30), TextColor3 = Color3.fromRGB(160, 160, 170)}):Play()
-				if indicator then
-					TweenService:Create(indicator, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
-				end
-			end
-		end
-	end)
-
-	return page
-end
-
-criarFrameConfig = function(titulo, textoBotao, paginaAlvo, callback)
-	local f = Instance.new("Frame")
-	f.Size = UDim2.new(1, -10, 0, 42)
-	f.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-	f.BorderSizePixel = 0
-	f.Parent = paginaAlvo
-
-	local fCorner = Instance.new("UICorner")
-	fCorner.CornerRadius = UDim.new(0, 6)
-	fCorner.Parent = f
-
-	local fStroke = Instance.new("UIStroke")
-	fStroke.Color = Color3.fromRGB(32, 32, 40)
-	fStroke.Thickness = 1
-	fStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	fStroke.Parent = f
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0.6, 0, 1, 0)
-	label.Position = UDim2.new(0, 12, 0, 0)
-	label.BackgroundTransparency = 1
-	label.Text = titulo
-	label.TextColor3 = Color3.fromRGB(235, 235, 240)
-	label.Font = Enum.Font.GothamMedium
-	label.TextSize = 11
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = f
-
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0.26, 0, 0.65, 0)
-	btn.Position = UDim2.new(0.7, 0, 0.175, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-	btn.Text = textoBotao
-	btn.TextColor3 = Color3.fromRGB(180, 180, 190)
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 10
-	btn.BorderSizePixel = 0
-	btn.Parent = f
-
-	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 5)
-	btnCorner.Parent = btn
-
-	local btnStroke = Instance.new("UIStroke")
-	btnStroke.Color = Color3.fromRGB(45, 45, 55)
-	btnStroke.Thickness = 1
-	btnStroke.Parent = btn
-
-	btn.MouseEnter:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(110, 40, 185), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-		TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = Color3.fromRGB(140, 60, 220)}):Play()
-	end)
-
-	btn.MouseLeave:Connect(function()
-		if btn then
-			local isEnabled = (btn.Text == "Ativado") or (btn.Text == "Ativa") or (btn.Text == "Ativada")
-			local targetBg = isEnabled and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-			local targetTx = isEnabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 190)
-			local targetStroke = isEnabled and Color3.fromRGB(150, 70, 230) or Color3.fromRGB(45, 45, 55)
-
-			TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = targetBg, TextColor3 = targetTx}):Play()
-			TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = targetStroke}):Play()
-		end
-	end)
-
-	btn.MouseButton1Click:Connect(function()
-		callback(btn)
-	end)
-
-	return f
-end
-
-criarSliderConfig = function(titulo, desc, min, max, padrao, paginaAlvo, callback)
-	local f = Instance.new("Frame")
-	f.Size = UDim2.new(1, -10, 0, 52)
-	f.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-	f.BorderSizePixel = 0
-	f.Parent = paginaAlvo
-
-	local fCorner = Instance.new("UICorner")
-	fCorner.CornerRadius = UDim.new(0, 6)
-	fCorner.Parent = f
-
-	local fStroke = Instance.new("UIStroke")
-	fStroke.Color = Color3.fromRGB(32, 32, 40)
-	fStroke.Thickness = 1
-	fStroke.Parent = f
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0.5, 0, 0, 20)
-	label.Position = UDim2.new(0, 12, 0, 4)
-	label.BackgroundTransparency = 1
-	label.Text = titulo
-	label.TextColor3 = Color3.fromRGB(235, 235, 240)
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 11
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = f
-
-	local descLabel = Instance.new("TextLabel")
-	descLabel.Size = UDim2.new(0.5, 0, 0, 20)
-	descLabel.Position = UDim2.new(0, 12, 0, 24)
-	descLabel.BackgroundTransparency = 1
-	descLabel.Text = desc
-	descLabel.TextColor3 = Color3.fromRGB(140, 140, 150)
-	descLabel.Font = Enum.Font.SourceSans
-	descLabel.TextSize = 11
-	descLabel.TextXAlignment = Enum.TextXAlignment.Left
-	descLabel.Parent = f
-
-	local input = Instance.new("TextBox")
-	input.Size = UDim2.new(0.2, 0, 0, 26)
-	input.Position = UDim2.new(0.75, 0, 0.5, -13)
-	input.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
-	input.TextColor3 = Color3.fromRGB(255, 255, 255)
-	input.Text = tostring(padrao)
-	input.Font = Enum.Font.GothamBold
-	input.TextSize = 11
-	input.BorderSizePixel = 0
-	input.Parent = f
-
-	local inputCorner = Instance.new("UICorner")
-	inputCorner.CornerRadius = UDim.new(0, 4)
-	inputCorner.Parent = input
-
-	input.FocusLost:Connect(function(enterPressed)
-		local val = tonumber(input.Text)
-		if val then
-			local clamped = math.clamp(val, min, max)
-			input.Text = tostring(clamped)
-			callback(clamped)
-		else
-			input.Text = tostring(padrao)
-		end
-	end)
-
-	return f
-end
+end)
