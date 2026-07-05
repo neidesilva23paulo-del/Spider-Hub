@@ -48,6 +48,7 @@ local noFogActive = false
 local originalFogStart = Lighting.FogStart
 local originalFogEnd = Lighting.FogEnd
 local originalAtmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+local insScroll, insLayout, modScroll, modLayout
 
 -- Referências para o Fly e Conexões
 local linVel, alignOri, flyConnection, jumpConnection
@@ -458,7 +459,7 @@ local modsPage = createTab("Modificações")
 -- UI DA ABA INSPETOR
 -- ==========================================
 do
-local insScroll = Instance.new("ScrollingFrame")
+ insScroll = Instance.new("ScrollingFrame")
 insScroll.Size = UDim2.new(1, 0, 1, 0)
 insScroll.BackgroundTransparency = 1
 insScroll.BorderSizePixel = 0
@@ -466,7 +467,7 @@ insScroll.ScrollBarThickness = 4
 insScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
 insScroll.Parent = inspectorPage
 
-local insLayout = Instance.new("UIListLayout")
+ insLayout = Instance.new("UIListLayout")
 insLayout.Padding = UDim.new(0, 8)
 insLayout.Parent = insScroll
 
@@ -627,7 +628,7 @@ end
 -- ABA MODIFICAÇÕES (FUNÇÕES EXTRAS)
 -- ==========================================
 do 
-local modScroll = Instance.new("ScrollingFrame")
+ modScroll = Instance.new("ScrollingFrame")
 modScroll.Size = UDim2.new(1, 0, 1, 0)
 modScroll.BackgroundTransparency = 1
 modScroll.BorderSizePixel = 0
@@ -635,7 +636,7 @@ modScroll.ScrollBarThickness = 4
 modScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
 modScroll.Parent = modsPage
 
-local modLayout = Instance.new("UIListLayout")
+ modLayout = Instance.new("UIListLayout")
 modLayout.Padding = UDim.new(0, 10)
 modLayout.Parent = modScroll
 
