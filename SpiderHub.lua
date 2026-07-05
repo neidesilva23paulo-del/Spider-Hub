@@ -1517,7 +1517,7 @@ local compEspFrame = Instance.new("Frame")
 compEspFrame.Size = UDim2.new(1, -10, 0, 45)
 compEspFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 compEspFrame.BorderSizePixel = 0
-compEspFrame.Parent = ftfPage -- Redirecionado para ftfPage
+compEspFrame.Parent = ftfScroll -- Redirecionado para ftfPage
 
 local compEspCorner = Instance.new("UICorner")
 compEspCorner.CornerRadius = UDim.new(0, 6)
@@ -1554,7 +1554,7 @@ local freezeEspFrame = Instance.new("Frame")
 freezeEspFrame.Size = UDim2.new(1, -10, 0, 45)
 freezeEspFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 freezeEspFrame.BorderSizePixel = 0
-freezeEspFrame.Parent = ftfPage -- Redirecionado para ftfPage
+freezeEspFrame.Parent = ftfScroll -- Redirecionado para ftfPage
 
 local freezeEspCorner = Instance.new("UICorner")
 freezeEspCorner.CornerRadius = UDim.new(0, 6)
@@ -2109,6 +2109,242 @@ do
 			end
 		end
 		setStatus("Fera Atual: " .. beastName)
+	end)
+
+	-- ==========================================
+	-- ESPs AVANÇADOS (CATEGORIA 2 - KOALA SCRIPTS)
+	-- ==========================================
+
+	-- 1. Mostrar Progresso de Hack em Tempo Real (PCProgESP)
+	local pcProgConnection
+	criarFrameConfig("Mostrar Progresso de Hack (PC)", "Desativado", ftfScroll, function(btn)
+		local active = (btn.Text == "Desativado")
+		btn.Text = active and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = active and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+		if active then
+			pcProgConnection = RunService.Heartbeat:Connect(function()
+				local currentMap = game.ReplicatedStorage:FindFirstChild("CurrentMap")
+				local mapValue = currentMap and currentMap.Value
+				if not mapValue then return end
+
+				-- Coleta jogadores digitando
+				local typingPlayers = {}
+				for _, p in ipairs(Players:GetPlayers()) do
+					if p ~= LocalPlayer and p.Character and p:FindFirstChild("TempPlayerStatsModule") then
+						local anim = p.TempPlayerStatsModule:FindFirstChild("CurrentAnimation")
+						if anim and anim.Value == "Typing" then
+							table.insert(typingPlayers, p)
+						end
+					end
+				end
+
+				-- Atualiza os outdoors de progresso
+				local pcCount = 0
+				for _, v in ipairs(mapValue:GetChildren()) do
+					if v.Name == "ComputerTable" and v:FindFirstChild("Screen") then
+						pcCount = pcCount + 1
+						local billboard = v:FindFirstChild("KSBillboard")
+						if not billboard then
+							billboard = Instance.new("BillboardGui")
+							billboard.Name = "KSBillboard"
+							billboard.AlwaysOnTop = true
+							billboard.Size = UDim2.new(0, 200, 0, 25)
+							billboard.StudsOffsetWorldSpace = Vector3.new(0, 1.5, 0)
+							billboard.Parent = v
+
+							local label = Instance.new("TextLabel")
+							label.BackgroundTransparency = 1
+							label.TextColor3 = Color3.fromRGB(0, 200, 255)
+							label.Font = Enum.Font.GothamBold
+							label.Size = UDim2.new(1, 0, 1, 0)
+							label.TextScaled = true
+							label.RichText = true
+							label.Parent = billboard
+						end
+
+						-- Calcula o progresso do jogador mais próximo
+						local progress = nil
+						for _, tpPlr in ipairs(typingPlayers) do
+							if tpPlr.Character and tpPlr.Character:FindFirstChild("HumanoidRootPart") then
+								local dist = (tpPlr.Character.HumanoidRootPart.Position - v.Screen.Position).Magnitude
+								if dist < 15 then
+									local stats = tpPlr:FindFirstChild("TempPlayerStatsModule")
+									local progressVal = stats and stats:FindFirstChild("ActionProgress")
+									if progressVal then
+										progress = math.round(progressVal.Value * 100)
+									end
+								end
+							end
+						end
+
+						if progress then
+							billboard.TextLabel.Text = string.format("PC %d | <font color='#00FF00'>%d%%</font>", pcCount, progress)
+						else
+							billboard.TextLabel.Text = string.format("PC %d | Aguardando", pcCount)
+						end
+					end
+				end
+			end)
+		else
+			if pcProgConnection then
+				pcProgConnection:Disconnect()
+				pcProgConnection = nil
+			end
+			local currentMap = game.ReplicatedStorage:FindFirstChild("CurrentMap")
+			local mapValue = currentMap and currentMap.Value
+			if mapValue then
+				for _, v in ipairs(mapValue:GetChildren()) do
+					local billboard = v:FindFirstChild("KSBillboard")
+					if billboard then billboard:Destroy() end
+				end
+			end
+		end
+	end)
+
+	-- 2. Mostrar Tempo de Queda / Recuperação de Sobreviventes (ShowPlrRagTime)
+	local ragdollConnection
+	criarFrameConfig("ESP Tempo de Queda (Nocaute)", "Desativado", ftfScroll, function(btn)
+		local active = (btn.Text == "Desativado")
+		btn.Text = active and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = active and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+		if active then
+			ragdollConnection = RunService.Heartbeat:Connect(function()
+				for _, p in ipairs(Players:GetPlayers()) do
+					if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+						local stats = p:FindFirstChild("TempPlayerStatsModule")
+						local isDowned = stats and stats:FindFirstChild("Ragdoll") and stats.Ragdoll.Value == true
+						local progress = stats and stats:FindFirstChild("ActionProgress")
+
+						local billboard = p.Character:FindFirstChild("PlrRagTimeBillboard")
+
+						if isDowned and progress then
+							if not billboard then
+								billboard = Instance.new("BillboardGui")
+								billboard.Name = "PlrRagTimeBillboard"
+								billboard.AlwaysOnTop = true
+								billboard.Size = UDim2.new(0, 180, 0, 30)
+								billboard.ExtentsOffsetWorldSpace = Vector3.new(0, 1.5, 0)
+								billboard.Parent = p.Character
+
+								local label = Instance.new("TextLabel")
+								label.BackgroundTransparency = 1
+								label.TextColor3 = Color3.fromRGB(255, 50, 50)
+								label.Font = Enum.Font.GothamBold
+								label.Size = UDim2.new(1, 0, 1, 0)
+								label.TextScaled = true
+								label.Parent = billboard
+							end
+							billboard.TextLabel.Text = string.format("%s | Caído: %d%%", p.DisplayName, math.floor(progress.Value * 100))
+						elseif billboard then
+							billboard:Destroy()
+						end
+					end
+				end
+			end)
+		else
+			if ragdollConnection then
+				ragdollConnection:Disconnect()
+				ragdollConnection = nil
+			end
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p.Character then
+					local billboard = p.Character:FindFirstChild("PlrRagTimeBillboard")
+					if billboard then billboard:Destroy() end
+				end
+			end
+		end
+	end)
+
+	-- 3. ESP de Armários / Closets (LockerESP)
+	local lockerESPActive = false
+	criarFrameConfig("ESP Armários (Locker ESP)", "Desativado", ftfScroll, function(btn)
+		lockerESPActive = not lockerESPActive
+		btn.Text = lockerESPActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = lockerESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+		local collectionService = game:GetService("CollectionService")
+
+		if lockerESPActive then
+			for _, locker in ipairs(collectionService:GetTagged("LOCKER")) do
+				if not locker:FindFirstChild("LockerHighlight") then
+					local highlight = Instance.new("Highlight")
+					highlight.Name = "LockerHighlight"
+					highlight.FillColor = Color3.fromRGB(210, 210, 0) -- Amarelo translúcido
+					highlight.FillTransparency = 0.6
+					highlight.OutlineColor = Color3.fromRGB(255, 255, 100)
+					highlight.OutlineTransparency = 0.2
+					highlight.Parent = locker
+				end
+			end
+		else
+			for _, locker in ipairs(collectionService:GetTagged("LOCKER")) do
+				local hl = locker:FindFirstChild("LockerHighlight")
+				if hl then hl:Destroy() end
+			end
+		end
+	end)
+
+	-- 4. ESP de Dutos de Ventilação (VentESP)
+	local ventESPActive = false
+	criarFrameConfig("ESP Dutos de Ventilação", "Desativado", ftfScroll, function(btn)
+		ventESPActive = not ventESPActive
+		btn.Text = ventESPActive and "Ativado" or "Desativado"
+		btn.BackgroundColor3 = ventESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+		local function criarSlicesVent(part)
+			if part:FindFirstChild("VentSGU_Front") then return end
+			local faces = {
+				Enum.NormalId.Front, Enum.NormalId.Back, 
+				Enum.NormalId.Left, Enum.NormalId.Right, 
+				Enum.NormalId.Top, Enum.NormalId.Bottom
+			}
+			for _, face in ipairs(faces) do
+				local sgu = Instance.new("SurfaceGui")
+				sgu.Name = "VentSGU_" .. face.Name
+				sgu.AlwaysOnTop = true
+				sgu.Face = face
+				sgu.Parent = part
+
+				local frame = Instance.new("Frame")
+				frame.BackgroundColor3 = Color3.fromRGB(255, 255, 150) -- Amarelo claro suave
+				frame.BackgroundTransparency = 0.65
+				frame.Size = UDim2.new(1, 0, 1, 0)
+				frame.BorderSizePixel = 0
+				frame.Parent = sgu
+			end
+		end
+
+		local function removerSlicesVent(part)
+			for _, v in ipairs(part:GetChildren()) do
+				if v:IsA("SurfaceGui") and string.find(v.Name, "VentSGU_") then
+					v:Destroy()
+				end
+			end
+		end
+
+		if ventESPActive then
+			local currentMap = game.ReplicatedStorage:FindFirstChild("CurrentMap")
+			local mapValue = currentMap and currentMap.Value
+			if mapValue then
+				for _, v in ipairs(mapValue:GetDescendants()) do
+					if v:IsA("BasePart") and string.find(string.lower(v.Name), "ventblock") then
+						criarSlicesVent(v)
+					end
+				end
+			end
+		else
+			local currentMap = game.ReplicatedStorage:FindFirstChild("CurrentMap")
+			local mapValue = currentMap and currentMap.Value
+			if mapValue then
+				for _, v in ipairs(mapValue:GetDescendants()) do
+					if v:IsA("BasePart") then
+						removerSlicesVent(v)
+					end
+				end
+			end
+		end
 	end)
 end
 
