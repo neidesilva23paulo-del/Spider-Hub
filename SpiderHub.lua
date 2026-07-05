@@ -876,167 +876,8 @@ local noclipBtnCorner = Instance.new("UICorner")
 noclipBtnCorner.CornerRadius = UDim.new(0, 5)
 noclipBtnCorner.Parent = noclipBtn
 
--- ==========================================
--- NOVAS FUNÇÕES DE MOVIMENTAÇÃO
--- ==========================================
 
--- 1. Speed Hack (Velocidade)
-local speedHackFrame = Instance.new("Frame")
-speedHackFrame.Size = UDim2.new(1, -10, 0, 45)
-speedHackFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-speedHackFrame.BorderSizePixel = 0
-speedHackFrame.Parent = moveScroll -- Certifique-se de que moveScroll existe
 
-local speedHackCorner = Instance.new("UICorner")
-speedHackCorner.CornerRadius = UDim.new(0, 6)
-speedHackCorner.Parent = speedHackFrame
-
-local speedHackLabel = Instance.new("TextLabel")
-speedHackLabel.Size = UDim2.new(0.6, 0, 1, 0)
-speedHackLabel.Position = UDim2.new(0, 12, 0, 0)
-speedHackLabel.BackgroundTransparency = 1
-speedHackLabel.Text = "Speed Hack (Velocidade)"
-speedHackLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-speedHackLabel.Font = Enum.Font.GothamBold
-speedHackLabel.TextSize = 12
-speedHackLabel.TextXAlignment = Enum.TextXAlignment.Left
-speedHackLabel.Parent = speedHackFrame
-
-local speedHackBtn = Instance.new("TextButton")
-speedHackBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
-speedHackBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
-speedHackBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-speedHackBtn.Text = "Definir 50"
-speedHackBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-speedHackBtn.Font = Enum.Font.GothamMedium
-speedHackBtn.TextSize = 11
-speedHackBtn.BorderSizePixel = 0
-speedHackBtn.Parent = speedHackFrame
-
-local speedHackBtnCorner = Instance.new("UICorner")
-speedHackBtnCorner.CornerRadius = UDim.new(0, 5)
-speedHackBtnCorner.Parent = speedHackBtn
-
-speedHackBtn.MouseButton1Click:Connect(function()
-	local char = LocalPlayer.Character
-	if char then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.WalkSpeed = 50
-			setStatus("Velocidade definida para 50.")
-			speedHackBtn.Text = "Ativado (50)"
-			speedHackBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-			speedHackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		end
-	end
-end)
-
--- 2. Jump Power (Pulo Alto)
-local jumpPowerFrame = Instance.new("Frame")
-jumpPowerFrame.Size = UDim2.new(1, -10, 0, 45)
-jumpPowerFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-jumpPowerFrame.BorderSizePixel = 0
-jumpPowerFrame.Parent = moveScroll
-
-local jumpPowerCorner = Instance.new("UICorner")
-jumpPowerCorner.CornerRadius = UDim.new(0, 6)
-jumpPowerCorner.Parent = jumpPowerFrame
-
-local jumpPowerLabel = Instance.new("TextLabel")
-jumpPowerLabel.Size = UDim2.new(0.6, 0, 1, 0)
-jumpPowerLabel.Position = UDim2.new(0, 12, 0, 0)
-jumpPowerLabel.BackgroundTransparency = 1
-jumpPowerLabel.Text = "Jump Power (Pulo Alto)"
-jumpPowerLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-jumpPowerLabel.Font = Enum.Font.GothamBold
-jumpPowerLabel.TextSize = 12
-jumpPowerLabel.TextXAlignment = Enum.TextXAlignment.Left
-jumpPowerLabel.Parent = jumpPowerFrame
-
-local jumpPowerBtn = Instance.new("TextButton")
-jumpPowerBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
-jumpPowerBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
-jumpPowerBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-jumpPowerBtn.Text = "Definir 100"
-jumpPowerBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-jumpPowerBtn.Font = Enum.Font.GothamMedium
-jumpPowerBtn.TextSize = 11
-jumpPowerBtn.BorderSizePixel = 0
-jumpPowerBtn.Parent = jumpPowerFrame
-
-local jumpPowerBtnCorner = Instance.new("UICorner")
-jumpPowerBtnCorner.CornerRadius = UDim.new(0, 5)
-jumpPowerBtnCorner.Parent = jumpPowerBtn
-
-jumpPowerBtn.MouseButton1Click:Connect(function()
-	local char = LocalPlayer.Character
-	if char then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum.JumpPower = 100
-			setStatus("Força do pulo definida para 100.")
-			jumpPowerBtn.Text = "Ativado (100)"
-			jumpPowerBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-			jumpPowerBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		end
-	end
-end)
-
--- 3. Third Person (Terceira Pessoa)
-local thirdPersonFrame = Instance.new("Frame")
-thirdPersonFrame.Size = UDim2.new(1, -10, 0, 45)
-thirdPersonFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-thirdPersonFrame.BorderSizePixel = 0
-thirdPersonFrame.Parent = moveScroll
-
-local thirdPersonCorner = Instance.new("UICorner")
-thirdPersonCorner.CornerRadius = UDim.new(0, 6)
-thirdPersonCorner.Parent = thirdPersonFrame
-
-local thirdPersonLabel = Instance.new("TextLabel")
-thirdPersonLabel.Size = UDim2.new(0.6, 0, 1, 0)
-thirdPersonLabel.Position = UDim2.new(0, 12, 0, 0)
-thirdPersonLabel.BackgroundTransparency = 1
-thirdPersonLabel.Text = "Forçar Terceira Pessoa"
-thirdPersonLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-thirdPersonLabel.Font = Enum.Font.GothamBold
-thirdPersonLabel.TextSize = 12
-thirdPersonLabel.TextXAlignment = Enum.TextXAlignment.Left
-thirdPersonLabel.Parent = thirdPersonFrame
-
-local thirdPersonBtn = Instance.new("TextButton")
-thirdPersonBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
-thirdPersonBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
-thirdPersonBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-thirdPersonBtn.Text = "Alternar"
-thirdPersonBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-thirdPersonBtn.Font = Enum.Font.GothamMedium
-thirdPersonBtn.TextSize = 11
-thirdPersonBtn.BorderSizePixel = 0
-thirdPersonBtn.Parent = thirdPersonFrame
-
-local thirdPersonBtnCorner = Instance.new("UICorner")
-thirdPersonBtnCorner.CornerRadius = UDim.new(0, 5)
-thirdPersonBtnCorner.Parent = thirdPersonBtn
-
-thirdPersonBtn.MouseButton1Click:Connect(function()
-	local camera = workspace.CurrentCamera
-	if camera.CameraType == Enum.CameraType.Custom then
-		camera.CameraType = Enum.CameraType.Track
-		setStatus("Câmera fixada em terceira pessoa.")
-		thirdPersonBtn.Text = "Ativado"
-		thirdPersonBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-		thirdPersonBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	else
-		camera.CameraType = Enum.CameraType.Custom
-		setStatus("Câmera restaurada para Custom.")
-		thirdPersonBtn.Text = "Desativado"
-		thirdPersonBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-		thirdPersonBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-	end
-end)
-
--- Atualizar CanvasSize da moveScroll após adicionar novos itens
 moveScroll.CanvasSize = UDim2.new(0, 0, 0, moveLayout.AbsoluteContentSize.Y + 15)
 
 -- ==========================================
@@ -2023,6 +1864,7 @@ Players.PlayerAdded:Connect(monitorarJogador)
 -- FOV SLIDER (Campo de Visão)
 -- ==========================================
 
+do
 local fovFrame = Instance.new("Frame")
 fovFrame.Size = UDim2.new(1, -10, 0, 45)
 fovFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
@@ -2074,7 +1916,7 @@ fovInput.FocusLost:Connect(function(enterPressed)
 		end
 	end
 end)
-
+end
 -- Atualizar CanvasSize da visualScroll após adicionar novos itens
 visualScroll.CanvasSize = UDim2.new(0, 0, 0, visualLayout.AbsoluteContentSize.Y + 15)
 
