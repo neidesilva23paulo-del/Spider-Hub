@@ -471,43 +471,43 @@ insLayout.Padding = UDim.new(0, 8)
 insLayout.Parent = insScroll
 
 -- Função auxiliar para criar linhas de dados no Inspetor
-local function criarLinhaInfo(label, valorInicial)
-	local f = Instance.new("Frame")
-	f.Size = UDim2.new(1, -10, 0, 28)
-	f.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
-	f.BorderSizePixel = 0
-	f.Parent = insScroll
+	local function criarLinhaInfo(label, valorInicial)
+		local f = Instance.new("Frame")
+		f.Size = UDim2.new(1, -10, 0, 28)
+		f.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+		f.BorderSizePixel = 0
+		f.Parent = insScroll
 
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, 4)
-	c.Parent = f
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0, 4)
+		c.Parent = f
 
-	local l = Instance.new("TextLabel")
-	l.Size = UDim2.new(0.4, 0, 1, 0)
-	l.Position = UDim2.new(0, 8, 0, 0)
-	l.BackgroundTransparency = 1
-	l.Text = label .. ":"
-	l.TextColor3 = Color3.fromRGB(130, 50, 200)
-	l.Font = Enum.Font.GothamBold
-	l.TextSize = 10
-	l.TextXAlignment = Enum.TextXAlignment.Left
-	l.Parent = f
+		local l = Instance.new("TextLabel")
+		l.Size = UDim2.new(0.4, 0, 1, 0)
+		l.Position = UDim2.new(0, 8, 0, 0)
+		l.BackgroundTransparency = 1
+		l.Text = label .. ":"
+		l.TextColor3 = Color3.fromRGB(130, 50, 200)
+		l.Font = Enum.Font.GothamBold
+		l.TextSize = 10
+		l.TextXAlignment = Enum.TextXAlignment.Left
+		l.Parent = f
 
-	local v = Instance.new("TextBox")
-	v.Size = UDim2.new(0.55, 0, 1, 0)
-	v.Position = UDim2.new(0.4, 0, 0, 0)
-	v.BackgroundTransparency = 1
-	v.Text = valorInicial
-	v.TextColor3 = Color3.fromRGB(220, 220, 220)
-	v.Font = Enum.Font.Gotham
-	v.TextSize = 10
-	v.TextXAlignment = Enum.TextXAlignment.Right
-	v.ClearTextOnFocus = false
-	v.ReadOnly = true
-	v.Parent = f
+		local v = Instance.new("TextBox")
+		v.Size = UDim2.new(0.55, 0, 1, 0)
+		v.Position = UDim2.new(0.4, 0, 0, 0)
+		v.BackgroundTransparency = 1
+		v.Text = valorInicial
+		v.TextColor3 = Color3.fromRGB(220, 220, 220)
+		v.Font = Enum.Font.Gotham
+		v.TextSize = 10
+		v.TextXAlignment = Enum.TextXAlignment.Right
+		v.ClearTextOnFocus = false
+		v.TextEditable = false -- <--- Mude de v.ReadOnly = true para esta linha
+		v.Parent = f
 
-	return v
-end
+		return v
+	end
 
 -- Campos da Interface
 local iStatus = criarLinhaInfo("Status do Inspetor [F4]", "DESATIVADO")
