@@ -1,6 +1,6 @@
 --[[
     ================================================================
-                           SPIDER HUB (V1.6)
+                           SPIDER HUB (V1.7)
     ================================================================
     Aplicação unificada com interface moderna, modular e responsiva.
 ]]
@@ -583,6 +583,15 @@ statusBar.TextXAlignment = Enum.TextXAlignment.Left
 statusBar.ZIndex = 3
 statusBar.Parent = mainFrame
 
+local function setStatus(msg)
+	statusBar.Text = "LOG: " .. tostring(msg)
+	task.spawn(function()
+		statusBar.TextColor3 = Color3.fromRGB(130, 50, 200)
+		task.wait(1.5)
+		statusBar.TextColor3 = Color3.fromRGB(150, 150, 160)
+	end)
+end
+
 -- Minimizar Painel
 local minBtn = Instance.new("TextButton")
 minBtn.Name = "MinimizeButton"
@@ -645,7 +654,7 @@ minBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================================
--- GESTÃO DE ABAS E PAINEL CONFIG
+-- GESTÃO DE ABAS E CONFIGURAÇÕES DE INTERFACE
 -- ==========================================
 local function createTab(tabName)
 	local page = Instance.new("Frame")
@@ -720,6 +729,79 @@ local function createTab(tabName)
 	end)
 
 	return page
+end
+
+-- Função Auxiliar para Criar Cards de Configurações
+local function criarFrameConfig(titulo, textoBotao, paginaAlvo, callback)
+	local f = Instance.new("Frame")
+	f.Size = UDim2.new(1, -10, 0, 42)
+	f.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+	f.BorderSizePixel = 0
+	f.Parent = paginaAlvo
+
+	local fCorner = Instance.new("UICorner")
+	fCorner.CornerRadius = UDim.new(0, 6)
+	fCorner.Parent = f
+
+	local fStroke = Instance.new("UIStroke")
+	fStroke.Color = Color3.fromRGB(32, 32, 40)
+	fStroke.Thickness = 1
+	fStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	fStroke.Parent = f
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.6, 0, 1, 0)
+	label.Position = UDim2.new(0, 12, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = titulo
+	label.TextColor3 = Color3.fromRGB(235, 235, 240)
+	label.Font = Enum.Font.GothamMedium
+	label.TextSize = 11
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = f
+
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0.26, 0, 0.65, 0)
+	btn.Position = UDim2.new(0.7, 0, 0.175, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+	btn.Text = textoBotao
+	btn.TextColor3 = Color3.fromRGB(180, 180, 190)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.BorderSizePixel = 0
+	btn.Parent = f
+
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 5)
+	btnCorner.Parent = btn
+
+	local btnStroke = Instance.new("UIStroke")
+	btnStroke.Color = Color3.fromRGB(45, 45, 55)
+	btnStroke.Thickness = 1
+	btnStroke.Parent = btn
+
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(110, 40, 185), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+		TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = Color3.fromRGB(140, 60, 220)}):Play()
+	end)
+
+	btn.MouseLeave:Connect(function()
+		if btn then
+			local isEnabled = (btn.Text == "Ativado")
+			local targetBg = isEnabled and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+			local targetTx = isEnabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 190)
+			local targetStroke = isEnabled and Color3.fromRGB(150, 70, 230) or Color3.fromRGB(45, 45, 55)
+
+			TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = targetBg, TextColor3 = targetTx}):Play()
+			TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = targetStroke}):Play()
+		end
+	end)
+
+	btn.MouseButton1Click:Connect(function()
+		callback(btn)
+	end)
+
+	return f
 end
 
 -- Instanciação de Abas
@@ -1319,16 +1401,6 @@ local function CheckHeal()
 	end
 end
 
-local function IsTeammate(player)
-	if LocalPlayer.Team and player.Team then
-		return LocalPlayer.Team == player.Team
-	end
-	if LocalPlayer.TeamColor == player.TeamColor then 
-		return true 
-	end
-	return false
-end
-
 local function AttackTarget(TargetPlayer)
 	local _, MyRoot, _ = GetCharacter()
 	local TargetChar = TargetPlayer.Character
@@ -1484,8 +1556,6 @@ chamsBtnCorner.CornerRadius = UDim.new(0, 5)
 chamsBtnCorner.Parent = chamsBtn
 
 chamsBtn.MouseButton1Click:Connect(toggleChams)
-for _, otherPlayer in ipairs(Players:GetPlayers()) do monitorarJogador(otherPlayer) end
-Players.PlayerAdded:Connect(monitorarJogador)
 
 -- Fullbright (Brilho Máximo)
 criarFrameConfig("Brilho Máximo (Fullbright)", "Desativado", visualScroll, function(btn)
@@ -1577,45 +1647,6 @@ end)
 
 -- Name Tags (ESP)
 local nameTagsActive = false
-
-local function criarTag(player)
-	if player == LocalPlayer or not player.Character then return end
-	local head = player.Character:WaitForChild("Head", 5)
-	if not head or head:FindFirstChild("SpiderNameTag") then return end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "SpiderNameTag"
-	billboard.Size = UDim2.new(0, 100, 0, 40)
-	billboard.AlwaysOnTop = true
-	billboard.ExtentsOffset = Vector3.new(0, 2.5, 0)
-
-	local textLabel = Instance.new("TextLabel")
-	textLabel.Size = UDim2.new(1, 0, 1, 0)
-	textLabel.BackgroundTransparency = 1
-	textLabel.TextColor3 = Color3.fromRGB(150, 80, 255)
-	textLabel.Font = Enum.Font.GothamBold
-	textLabel.TextSize = 10
-	textLabel.TextStrokeTransparency = 0.5
-	textLabel.Parent = billboard
-
-	billboard.Parent = head
-
-	task.spawn(function()
-		while nameTagsActive and billboard and billboard.Parent do
-			local char = player.Character
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			local _, myRoot, _ = GetCharacter()
-			local targetRoot = char and char:FindFirstChild("HumanoidRootPart")
-
-			if hum and myRoot and targetRoot then
-				local dist = math.round((myRoot.Position - targetRoot.Position).Magnitude)
-				textLabel.Text = string.format("%s\nHP: %d | Dist: %dm", player.DisplayName, hum.Health, dist)
-			end
-			task.wait(0.2)
-		end
-		billboard:Destroy()
-	end)
-end
 
 criarFrameConfig("Mostrar Tags de Nome (ESP)", "Desativado", visualScroll, function(btn)
 	nameTagsActive = not nameTagsActive
