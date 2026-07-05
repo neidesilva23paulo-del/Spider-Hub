@@ -1,6 +1,6 @@
 --[[
     ================================================================
-                           SPIDER HUB (V1.5)
+                           SPIDER HUB (V1.6)
     ================================================================
     Aplicação unificada com interface moderna, modular e responsiva.
 ]]
@@ -63,8 +63,14 @@ local mouseUnlockActive = false
 local mouseUnlockConnection
 local mouseUnlockBtn = nil
 
--- Tabela para rastreamento persistente de progresso dos PCs (Evita travamentos)
+-- Tabela para rastreamento de progresso persistente dos PCs
 local pcProgressTracker = {}
+
+-- Estados do Flee The Facility (Koala Scripts)
+local speedHackCrawlActive = false
+local autoHideFromSeerActive = false
+local lastSeerHidePos = nil
+local hadSeerHide = false
 
 -- Variáveis do Inspetor
 local InspectorActive = false
@@ -89,10 +95,10 @@ local tabs = {}
 local tabButtons = {}
 
 -- ==========================================
--- FUNÇÕES DE INFRAESTRUTURA E AJUSTE DE PERSONAGEM
+-- FUNÇÕES DE INFRAESTRUTURA E SELEÇÃO DE PERSONAGEM
 -- ==========================================
 
--- Retorna referências do Personagem de forma dinâmica e segura contra morte/respawn
+-- Retorna referências do Personagem de forma dinâmica
 local function GetCharacter()
 	local character = LocalPlayer.Character
 	if not character then return nil, nil, nil end
@@ -102,8 +108,17 @@ local function GetCharacter()
 end
 
 -- ==========================================
--- COMPONENTES VISUAIS E HIGHLIGHTS OTIMIZADOS
+-- COMPONENTES VISUAIS E UTILS DE CORES
 -- ==========================================
+
+-- Gera uma cor exclusiva com base no nome de usuário do jogador
+local function obterCorPeloNome(username)
+	local hash = 0
+	for i = 1, #username do 
+		hash = hash + string.byte(username, i) 
+	end
+	return Color3.fromHSV((hash % 100) / 100, 0.9, 1)
+end
 
 local function aplicarComputerESP(model)
 	if not model:IsA("Model") or model.Name ~= "ComputerTable" then return end
@@ -214,7 +229,6 @@ Workspace.DescendantAdded:Connect(function(descendant)
 	end
 end)
 
--- ESP de Saídas e Dutos
 local ftfVisualsActive = false
 local function applyFTFHighlight(name, color)
 	for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -236,8 +250,6 @@ local function applyFTFHighlight(name, color)
 	end
 end
 
--- ESP de Itens
-local itemEspActive = false
 local function aplicarItemESP(item)
 	if not item:IsA("Tool") or not item:FindFirstChild("Handle") then return end
 	local handle = item.Handle
@@ -263,7 +275,7 @@ local function aplicarItemESP(item)
 end
 
 -- ==========================================
--- FUNÇÕES DE CONTROLE DE MOVIMENTAÇÃO E MOUSE
+-- CONTROLE DE MOVIMENTAÇÃO E DESTRAVAMENTO DE MOUSE
 -- ==========================================
 
 local function toggleMouseUnlock()
@@ -402,7 +414,77 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ==========================================
--- JANELA PRINCIPAL E GERENCIAMENTO DE ABAS
+-- GESTÃO DO CORPO DE CHAMS E RASTREAMENTOS
+-- ==========================================
+
+local function colorirPersonagem(character, targetPlayer)
+	if not character or not targetPlayer or targetPlayer == LocalPlayer or not ChamsActive then return end
+	local corDoJogador = obterCorPeloNome(targetPlayer.Name)
+
+	local highlight = character:FindFirstChild("ColorChamsHighlight")
+	if not highlight then
+		highlight = Instance.new("Highlight")
+		highlight.Name = "ColorChamsHighlight"
+		highlight.FillColor = corDoJogador
+		highlight.FillTransparency = ChamsTransparency
+		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+		highlight.OutlineTransparency = 0.2
+		highlight.Parent = character
+	end
+
+	for _, part in ipairs(character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Color = corDoJogador
+			if ChamsNeon then part.Material = Enum.Material.Neon end
+		elseif part:IsA("Shirt") or part:IsA("Pants") or part:IsA("ShirtGraphic") then
+			part:Destroy()
+		end
+	end
+end
+
+local function monitorarJogador(targetPlayer)
+	if targetPlayer == LocalPlayer then return end
+	local function noCharacterAdded(character)
+		task.wait(0.1)
+		if ChamsActive then colorirPersonagem(character, targetPlayer) end
+		character.DescendantAdded:Connect(function(desc)
+			if ChamsActive and desc:IsA("BasePart") then
+				task.wait()
+				desc.Color = obterCorPeloNome(targetPlayer.Name)
+				if ChamsNeon then desc.Material = Enum.Material.Neon end
+			end
+		end)
+	end
+	if targetPlayer.Character then task.spawn(noCharacterAdded, targetPlayer.Character) end
+	targetPlayer.CharacterAdded:Connect(noCharacterAdded)
+end
+
+local function toggleChams()
+	ChamsActive = not ChamsActive
+	if ChamsActive then
+		chamsBtn.Text = "Ativado"
+		chamsBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		chamsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Chams Ativados.")
+		for _, otherPlayer in ipairs(Players:GetPlayers()) do
+			if otherPlayer.Character then colorirPersonagem(otherPlayer.Character, otherPlayer) end
+		end
+	else
+		chamsBtn.Text = "Desativado"
+		chamsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		chamsBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Chams Desativados.")
+		for _, otherPlayer in ipairs(Players:GetPlayers()) do
+			if otherPlayer.Character then
+				local hl = otherPlayer.Character:FindFirstChild("ColorChamsHighlight")
+				if hl then hl:Destroy() end
+			end
+		end
+	end
+end
+
+-- ==========================================
+-- CRIAÇÃO DA INTERFACE VISUAL (GUI PRINCIPAL)
 -- ==========================================
 
 local screenGui = Instance.new("ScreenGui")
@@ -431,7 +513,6 @@ do
 	mainStroke.Parent = mainFrame
 end
 
--- Header Topbar
 local topBar = Instance.new("Frame")
 topBar.Size = UDim2.new(1, 0, 0, 40)
 topBar.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
@@ -462,7 +543,6 @@ do
 	title.Parent = topBar
 end
 
--- Sidebar lateral
 local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0, 140, 1, -40)
 sidebar.Position = UDim2.new(0, 0, 0, 40)
@@ -503,16 +583,7 @@ statusBar.TextXAlignment = Enum.TextXAlignment.Left
 statusBar.ZIndex = 3
 statusBar.Parent = mainFrame
 
-local function setStatus(msg)
-	statusBar.Text = "LOG: " .. tostring(msg)
-	task.spawn(function()
-		statusBar.TextColor3 = Color3.fromRGB(130, 50, 200)
-		task.wait(1.5)
-		statusBar.TextColor3 = Color3.fromRGB(150, 150, 160)
-	end)
-end
-
--- Botão minimizar
+-- Minimizar Painel
 local minBtn = Instance.new("TextButton")
 minBtn.Name = "MinimizeButton"
 minBtn.Size = UDim2.new(0, 26, 0, 26)
@@ -573,6 +644,84 @@ minBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
+-- ==========================================
+-- GESTÃO DE ABAS E PAINEL CONFIG
+-- ==========================================
+local function createTab(tabName)
+	local page = Instance.new("Frame")
+	page.Size = UDim2.new(1, 0, 1, -20)
+	page.BackgroundTransparency = 1
+	page.Visible = false
+	page.Parent = contentContainer
+
+	tabs[tabName] = page
+
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0.9, 0, 0, 32)
+	btn.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+	btn.BackgroundTransparency = 1
+	btn.Text = "   " .. tabName
+	btn.TextColor3 = Color3.fromRGB(160, 160, 170)
+	btn.Font = Enum.Font.GothamMedium
+	btn.TextSize = 11
+	btn.TextXAlignment = Enum.TextXAlignment.Left
+	btn.BorderSizePixel = 0
+	btn.Parent = sidebar
+
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 6)
+	btnCorner.Parent = btn
+
+	local activeIndicator = Instance.new("Frame")
+	activeIndicator.Size = UDim2.new(0, 3, 0.5, 0)
+	activeIndicator.Position = UDim2.new(0, 4, 0.25, 0)
+	activeIndicator.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+	activeIndicator.BorderSizePixel = 0
+	activeIndicator.BackgroundTransparency = 1
+	activeIndicator.Parent = btn
+
+	local indicatorCorner = Instance.new("UICorner")
+	indicatorCorner.CornerRadius = UDim.new(0, 2)
+	indicatorCorner.Parent = activeIndicator
+
+	tabButtons[tabName] = btn
+
+	btn.MouseEnter:Connect(function()
+		if not page.Visible then
+			TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundTransparency = 0.93, TextColor3 = Color3.fromRGB(220, 220, 230)}):Play()
+		end
+	end)
+
+	btn.MouseLeave:Connect(function()
+		if not page.Visible then
+			TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(160, 160, 170)}):Play()
+		end
+	end)
+
+	btn.MouseButton1Click:Connect(function()
+		for name, p in pairs(tabs) do
+			local isTarget = (name == tabName)
+			local currentBtn = tabButtons[name]
+			local indicator = currentBtn:FindFirstChildOfClass("Frame")
+
+			p.Visible = isTarget
+			if isTarget then
+				TweenService:Create(currentBtn, TweenInfo.new(0.1), {BackgroundTransparency = 0.88, BackgroundColor3 = Color3.fromRGB(130, 50, 200), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+				if indicator then
+					TweenService:Create(indicator, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play()
+				end
+			else
+				TweenService:Create(currentBtn, TweenInfo.new(0.1), {BackgroundTransparency = 1, BackgroundColor3 = Color3.fromRGB(24, 24, 30), TextColor3 = Color3.fromRGB(160, 160, 170)}):Play()
+				if indicator then
+					TweenService:Create(indicator, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
+				end
+			end
+		end
+	end)
+
+	return page
+end
+
 -- Instanciação de Abas
 local homePage = createTab("Início")
 local movePage = createTab("Movimentação")
@@ -607,7 +756,7 @@ do
 	descLabel.Size = UDim2.new(1, 0, 0, 120)
 	descLabel.Position = UDim2.new(0, 0, 0, 40)
 	descLabel.BackgroundTransparency = 1
-	descLabel.Text = "Este hub unifica suas ferramentas de movimentação, trapaça visual e teletransporte em um painel responsivo.\n\nAtalhos Rápidos:\n[P] Ativar/Desativar Voo (Fly)\n[N] Ativar/Desativar Noclip"
+	descLabel.Text = "Este hub unifica suas ferramentas de movimentação, trapaça visual e teletransporte em um painel responsivo.\n\nAtalhos Rápidos:\n[P] Ativar/Desativar Voo (Fly)\n[N] Ativar/Desativar Noclip\n[Alt] Soltar Cursor"
 	descLabel.TextColor3 = Color3.fromRGB(170, 170, 180)
 	descLabel.Font = Enum.Font.Gotham
 	descLabel.TextSize = 12
@@ -993,7 +1142,7 @@ criarFrameConfig("Mostrar Nomes de Itens (ESP)", "Desativado", itemScroll, funct
 		btn.Text = "Ativado"
 		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
 		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		setStatus("ESP de itens active.")
+		setStatus("ESP de itens ativo.")
 
 		for _, descendant in ipairs(Workspace:GetDescendants()) do
 			aplicarItemESP(descendant)
@@ -1334,72 +1483,6 @@ local chamsBtnCorner = Instance.new("UICorner")
 chamsBtnCorner.CornerRadius = UDim.new(0, 5)
 chamsBtnCorner.Parent = chamsBtn
 
-local function colorirPersonagem(character, targetPlayer)
-	if not character or not targetPlayer or targetPlayer == LocalPlayer or not ChamsActive then return end
-	local corDoJogador = obterCorPeloNome(targetPlayer.Name)
-
-	local highlight = character:FindFirstChild("ColorChamsHighlight")
-	if not highlight then
-		highlight = Instance.new("Highlight")
-		highlight.Name = "ColorChamsHighlight"
-		highlight.FillColor = corDoJogador
-		highlight.FillTransparency = ChamsTransparency
-		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-		highlight.OutlineTransparency = 0.2
-		highlight.Parent = character
-	end
-
-	for _, part in ipairs(character:GetDescendants()) do
-		if part:IsA("BasePart") then
-			part.Color = corDoJogador
-			if ChamsNeon then part.Material = Enum.Material.Neon end
-		elseif part:IsA("Shirt") or part:IsA("Pants") or part:IsA("ShirtGraphic") then
-			part:Destroy()
-		end
-	end
-end
-
-local function monitorarJogador(targetPlayer)
-	if targetPlayer == LocalPlayer then return end
-	local function noCharacterAdded(character)
-		task.wait(0.1)
-		if ChamsActive then colorirPersonagem(character, targetPlayer) end
-		character.DescendantAdded:Connect(function(desc)
-			if ChamsActive and desc:IsA("BasePart") then
-				task.wait()
-				desc.Color = obterCorPeloNome(targetPlayer.Name)
-				if ChamsNeon then desc.Material = Enum.Material.Neon end
-			end
-		end)
-	end
-	if targetPlayer.Character then task.spawn(noCharacterAdded, targetPlayer.Character) end
-	targetPlayer.CharacterAdded:Connect(noCharacterAdded)
-end
-
-local function toggleChams()
-	ChamsActive = not ChamsActive
-	if ChamsActive then
-		chamsBtn.Text = "Ativado"
-		chamsBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-		chamsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		setStatus("Chams Ativados.")
-		for _, otherPlayer in ipairs(Players:GetPlayers()) do
-			if otherPlayer.Character then colorirPersonagem(otherPlayer.Character, otherPlayer) end
-		end
-	else
-		chamsBtn.Text = "Desativado"
-		chamsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-		chamsBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-		setStatus("Chams Desativados.")
-		for _, otherPlayer in ipairs(Players:GetPlayers()) do
-			if otherPlayer.Character then
-				local hl = otherPlayer.Character:FindFirstChild("ColorChamsHighlight")
-				if hl then hl:Destroy() end
-			end
-		end
-	end
-end
-
 chamsBtn.MouseButton1Click:Connect(toggleChams)
 for _, otherPlayer in ipairs(Players:GetPlayers()) do monitorarJogador(otherPlayer) end
 Players.PlayerAdded:Connect(monitorarJogador)
@@ -1696,7 +1779,7 @@ criarFrameConfig("ESP Computadores Dinâmico", "Desativado", ftfScroll, function
 							end
 						end
 
-						-- Sincroniza e memoriza o progresso para mantê-lo visível o tempo todo
+						-- Sincroniza e mantém o progresso visível o tempo todo
 						if progress then
 							pcProgressTracker[v] = progress
 						elseif not pcProgressTracker[v] then
