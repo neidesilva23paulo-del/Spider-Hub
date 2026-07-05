@@ -457,6 +457,7 @@ local modsPage = createTab("Modificações")
 -- ==========================================
 -- UI DA ABA INSPETOR
 -- ==========================================
+do
 local insScroll = Instance.new("ScrollingFrame")
 insScroll.Size = UDim2.new(1, 0, 1, 0)
 insScroll.BackgroundTransparency = 1
@@ -620,10 +621,12 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		setStatus("Inspetor: " .. (InspectorActive and "ATIVADO" or "DESATIVADO"))
 	end
 end)
+end
 
 -- ==========================================
 -- ABA MODIFICAÇÕES (FUNÇÕES EXTRAS)
 -- ==========================================
+do 
 local modScroll = Instance.new("ScrollingFrame")
 modScroll.Size = UDim2.new(1, 0, 1, 0)
 modScroll.BackgroundTransparency = 1
@@ -717,6 +720,7 @@ end)
 modLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 	modScroll.CanvasSize = UDim2.new(0, 0, 0, modLayout.AbsoluteContentSize.Y + 20)
 end)
+end
 
 -- ==========================================
 -- CONTEÚDO DA ABA: INÍCIO
@@ -1002,6 +1006,7 @@ end)
 -- ==========================================
 
 -- Elementos de UI de Jogadores definidos antes de suas funções
+do
 local pSearch = Instance.new("TextBox")
 pSearch.Size = UDim2.new(1, 0, 0, 32)
 pSearch.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
@@ -1220,7 +1225,8 @@ end)
 
 Players.PlayerAdded:Connect(function() task.wait(0.5) updatePlayersList() end)
 Players.PlayerRemoving:Connect(updatePlayersList)
-updatePlayersList()
+	updatePlayersList()
+end
 
 -- ==========================================
 -- CONTEÚDO DA ABA: ITENS (TELEPORTE)
