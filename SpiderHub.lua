@@ -1,6 +1,6 @@
 --[[
     ================================================================
-                           SPIDER HUB (V1.7)
+                           SPIDER HUB (V1.8)
     ================================================================
     Aplicação unificada com interface moderna, modular e responsiva.
 ]]
@@ -1043,11 +1043,15 @@ do
 		end
 	end
 
+	-- Modificado com programação defensiva para evitar crashes no executor
 	local function alternarEspectador(targetPlayer, specBtn)
 		local camera = workspace.CurrentCamera
+		if not camera then return end
 
 		if spectateConnection then
-			spectateConnection:Disconnect()
+			pcall(function()
+				spectateConnection:Disconnect()
+			end)
 			spectateConnection = nil
 		end
 
@@ -1059,14 +1063,20 @@ do
 			if localHum then
 				camera.CameraSubject = localHum
 			end
-			resetarBotoesEspectar()
-			setStatus("Câmera restaurada ao seu personagem.")
+			if resetarBotoesEspectar then
+				resetarBotoesEspectar()
+			end
+			if setStatus then
+				setStatus("Câmera restaurada ao seu personagem.")
+			end
 		else
 			local targetChar = targetPlayer.Character
-			local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+			local targetHum = targetChar and (targetChar:FindFirstChild("Humanoid") or targetChar:FindFirstChildOfClass("Humanoid"))
 
 			if targetHum then
-				resetarBotoesEspectar()
+				if resetarBotoesEspectar then
+					resetarBotoesEspectar()
+				end
 				spectatingPlayer = targetPlayer
 
 				camera.CameraType = Enum.CameraType.Custom
@@ -1075,20 +1085,26 @@ do
 				specBtn.Text = "Olhando"
 				specBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
 				specBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-				setStatus("Espectando: " .. targetPlayer.DisplayName)
+				if setStatus then
+					setStatus("Espectando: " .. tostring(targetPlayer.DisplayName or targetPlayer.Name))
+				end
 
-				spectateConnection = targetPlayer.CharacterAdded:Connect(function(newChar)
-					task.wait(0.2)
-					if spectatingPlayer == targetPlayer then
-						local newHum = newChar:WaitForChild("Humanoid", 5)
-						if newHum then
-							camera.CameraType = Enum.CameraType.Custom
-							camera.CameraSubject = newHum
+				if targetPlayer.CharacterAdded then
+					spectateConnection = targetPlayer.CharacterAdded:Connect(function(newChar)
+						task.wait(0.2)
+						if spectatingPlayer == targetPlayer then
+							local newHum = newChar:WaitForChild("Humanoid", 5) or newChar:FindFirstChildOfClass("Humanoid")
+							if newHum then
+								camera.CameraType = Enum.CameraType.Custom
+								camera.CameraSubject = newHum
+							end
 						end
-					end
-				end)
+					end)
+				end
 			else
-				setStatus("Jogador indisponível ou morto.")
+				if setStatus then
+					setStatus("Jogador indisponível ou morto.")
+				end
 			end
 		end
 	end
@@ -1834,6 +1850,7 @@ criarFrameConfig("ESP Computadores Dinâmico", "Desativado", ftfScroll, function
 end)
 
 -- 3. FUNCIONALIDADE INTEGRADA: Acelerar Codificação (Crawl Exploit)
+local speedHackCrawlActive = false
 local crawlAnim = nil
 criarFrameConfig("Acelerar Codificação [Q]", "Desativado", ftfScroll, function(btn)
 	speedHackCrawlActive = not speedHackCrawlActive
