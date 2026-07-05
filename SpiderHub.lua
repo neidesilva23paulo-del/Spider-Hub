@@ -2079,25 +2079,7 @@ do
 		end)
 	end)
 
-	-- 9. BYPASS ANTICHEAT (Survivor)
-	criarFrameConfig("Burlar Anticheat (Survivor)", "Executar", ftfScroll, function()
-		local character = LocalPlayer.Character
-		if character then
-			local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
-			local rootPart = character:FindFirstChild("HumanoidRootPart")
-			if torso and rootPart then
-				character.Parent = nil
-				rootPart.Parent = nil
-				task.wait(0.5)
-				local fake = torso:Clone()
-				fake.Parent = character
-				torso.Name = "HumanoidRootPart"
-				torso.Transparency = 1
-				character.Parent = workspace
-				setStatus("Bypass aplicado localmente.")
-			end
-		end
-	end)
+	
 
 	-- 10. DETECTAR QUEM É A FERA
 	criarFrameConfig("Quem é a Fera?", "Verificar", ftfScroll, function()
@@ -2128,7 +2110,7 @@ do
 				local mapValue = currentMap and currentMap.Value
 				if not mapValue then return end
 
-				-- Coleta jogadores digitando
+				-- Coleta de sobreviventes digitando
 				local typingPlayers = {}
 				for _, p in ipairs(Players:GetPlayers()) do
 					if p ~= LocalPlayer and p.Character and p:FindFirstChild("TempPlayerStatsModule") then
@@ -2139,7 +2121,6 @@ do
 					end
 				end
 
-				-- Atualiza os outdoors de progresso
 				local pcCount = 0
 				for _, v in ipairs(mapValue:GetChildren()) do
 					if v.Name == "ComputerTable" and v:FindFirstChild("Screen") then
@@ -2149,21 +2130,27 @@ do
 							billboard = Instance.new("BillboardGui")
 							billboard.Name = "KSBillboard"
 							billboard.AlwaysOnTop = true
-							billboard.Size = UDim2.new(0, 200, 0, 25)
+							billboard.Size = UDim2.new(0, 250, 0, 25)
 							billboard.StudsOffsetWorldSpace = Vector3.new(0, 1.5, 0)
 							billboard.Parent = v
 
 							local label = Instance.new("TextLabel")
 							label.BackgroundTransparency = 1
-							label.TextColor3 = Color3.fromRGB(0, 200, 255)
 							label.Font = Enum.Font.GothamBold
 							label.Size = UDim2.new(1, 0, 1, 0)
 							label.TextScaled = true
 							label.RichText = true
+							label.Text = v.Name .. tostring(pcCount) .. " | 0% ?"
 							label.Parent = billboard
 						end
 
-						-- Calcula o progresso do jogador mais próximo
+						-- Sincroniza cor do texto com a cor física da tela (Idêntico ao Koala)
+						billboard.TextLabel.TextColor3 = v.Screen.Color
+						if v.Screen.BrickColor == BrickColor.new("Bright blue") then
+							billboard.TextLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+						end
+
+						-- Calcula o progresso do sobrevivente mais próximo digitando
 						local progress = nil
 						for _, tpPlr in ipairs(typingPlayers) do
 							if tpPlr.Character and tpPlr.Character:FindFirstChild("HumanoidRootPart") then
@@ -2179,9 +2166,7 @@ do
 						end
 
 						if progress then
-							billboard.TextLabel.Text = string.format("PC %d | <font color='#00FF00'>%d%%</font>", pcCount, progress)
-						else
-							billboard.TextLabel.Text = string.format("PC %d | Aguardando", pcCount)
+							billboard.TextLabel.Text = v.Name .. tostring(pcCount) .. " | " .. tostring(progress) .. "%"
 						end
 					end
 				end
@@ -2286,67 +2271,7 @@ do
 		end
 	end)
 
-	-- 4. ESP de Dutos de Ventilação (VentESP)
-	local ventESPActive = false
-	criarFrameConfig("ESP Dutos de Ventilação", "Desativado", ftfScroll, function(btn)
-		ventESPActive = not ventESPActive
-		btn.Text = ventESPActive and "Ativado" or "Desativado"
-		btn.BackgroundColor3 = ventESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-
-		local function criarSlicesVent(part)
-			if part:FindFirstChild("VentSGU_Front") then return end
-			local faces = {
-				Enum.NormalId.Front, Enum.NormalId.Back, 
-				Enum.NormalId.Left, Enum.NormalId.Right, 
-				Enum.NormalId.Top, Enum.NormalId.Bottom
-			}
-			for _, face in ipairs(faces) do
-				local sgu = Instance.new("SurfaceGui")
-				sgu.Name = "VentSGU_" .. face.Name
-				sgu.AlwaysOnTop = true
-				sgu.Face = face
-				sgu.Parent = part
-
-				local frame = Instance.new("Frame")
-				frame.BackgroundColor3 = Color3.fromRGB(255, 255, 150) -- Amarelo claro suave
-				frame.BackgroundTransparency = 0.65
-				frame.Size = UDim2.new(1, 0, 1, 0)
-				frame.BorderSizePixel = 0
-				frame.Parent = sgu
-			end
-		end
-
-		local function removerSlicesVent(part)
-			for _, v in ipairs(part:GetChildren()) do
-				if v:IsA("SurfaceGui") and string.find(v.Name, "VentSGU_") then
-					v:Destroy()
-				end
-			end
-		end
-
-		if ventESPActive then
-			local currentMap = game.ReplicatedStorage:FindFirstChild("CurrentMap")
-			local mapValue = currentMap and currentMap.Value
-			if mapValue then
-				for _, v in ipairs(mapValue:GetDescendants()) do
-					if v:IsA("BasePart") and string.find(string.lower(v.Name), "ventblock") then
-						criarSlicesVent(v)
-					end
-				end
-			end
-		else
-			local currentMap = game.ReplicatedStorage:FindFirstChild("CurrentMap")
-			local mapValue = currentMap and currentMap.Value
-			if mapValue then
-				for _, v in ipairs(mapValue:GetDescendants()) do
-					if v:IsA("BasePart") then
-						removerSlicesVent(v)
-					end
-				end
-			end
-		end
-	end)
-end
+	
 
 -- ==========================================
 -- CONTEÚDO DA ABA: UTILITÁRIOS (ROlÁVEL)
