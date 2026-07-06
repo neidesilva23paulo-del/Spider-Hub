@@ -97,57 +97,74 @@ local tabButtons = {}
 -- ==========================================
 -- DEPENDÊNCIAS E CONFIGURAÇÕES DO AUTO-FARM (KOALA SCOPE)
 -- ==========================================
--- Tabela de configurações agora populada dinamicamente
-KoalaConfig = {}
+local KoalaConfig
+local DoSurvivorFarm
 
--- Função fábrica para gerar mocks completos e evitar "attempt to call a nil value"
-local function criarMock(chave, valorPadrao)
-	KoalaConfig[chave] = valorPadrao
-	return {
-		GetValue = function()
-			return KoalaConfig[chave]
-		end,
-		SetValue = function(self, val)
-			KoalaConfig[chave] = val
-		end,
-		SetUserInput = function(self, val)
-			KoalaConfig[chave] = val
-		end,
-		Update = function() end,
-		OnInputChanged = function() end,
-		OnActivated = function() end
-	}
-end
+do
+	-- Essas variáveis agora são locais APENAS a este bloco, liberando registradores e evitando estouros de limite no Luau
+	local PU = loadstring(game:HttpGet("https://pastebin.com/raw/xAZ4WQRS"))()
+	local onsurvivorfarm = false
+	local OnBeastFarm = false
+	local TempPlayerStatsModule = nil
+	local Comp = 0
+	local Beast = nil
+	local lpos = nil
+	local bnhide = false
+	local clpos = false
+	local bnhideelapse = 0
+	local noelepse = 0
+	local farmtasks = {}
 
--- Mocks de compatibilidade robustos gerados dinamicamente
-local AntiAFK = criarMock("AntiAFK", false)
-local ComputerAutoFarm = criarMock("ComputerAutoFarm", false)
-local KeepComputer = criarMock("KeepComputer", false)
-local AutoHideHack = criarMock("AutoHideHack", false)
-local UseMinimalTeleport = criarMock("UseMinimalTeleport", true)
-local TeleportInsteadTweenPCFarm = criarMock("TeleportInsteadTweenPCFarm", false)
-local TeleportToFreezePod = criarMock("TeleportToFreezePod", false)
-local TeleportToExitDoor = criarMock("TeleportToExitDoor", false)
-local FreezePodOnce = criarMock("FreezePodOnce", true)
-local ExitCancel = criarMock("ExitCancel", false)
-local WaitForSave = criarMock("WaitForSave", false)
-local WaitSaveDelay = criarMock("WaitSaveDelay", 0)
-local ForcedTogglesDisabled = criarMock("ForcedTogglesDisabled", false)
-local FarmTweenSpeed = criarMock("FarmTweenSpeed", 16)
-local WaitTweenFast = criarMock("WaitTweenFast", 8)
-local MinimumDuration = criarMock("MinimumDuration", 5)
-local StudsPerDelay = criarMock("StudsPerDelay", 16)
-local TriggerPrioritization = criarMock("TriggerPrioritization", 1)
-local CampTweenAnimOut = criarMock("CampTweenAnimOut", 30)
-local CampHackOut = criarMock("CampHackOut", 30)
-local CampFreezePodOut = criarMock("CampFreezePodOut", 30)
-local CampEscapeOut = criarMock("CampEscapeOut", 30)
-local TriggerUnCampOut = criarMock("TriggerUnCampOut", 5)
-local HideBeastNear = criarMock("HideBeastNear", false)
-local HideBeastNearDist = criarMock("HideBeastNearDist", 35)
-local HackBanUnbanTime = criarMock("HackBanUnbanTime", 5)
-local AntiPCError = criarMock("AntiPCError", false)
-local UnTieMe = criarMock("UnTieMe", false)
+	KoalaConfig = {}
+
+	-- Função fábrica para gerar mocks completos e evitar "attempt to call a nil value"
+	local function criarMock(chave, valorPadrao)
+		KoalaConfig[chave] = valorPadrao
+		return {
+			GetValue = function()
+				return KoalaConfig[chave]
+			end,
+			SetValue = function(self, val)
+				KoalaConfig[chave] = val
+			end,
+			SetUserInput = function(self, val)
+				KoalaConfig[chave] = val
+			end,
+			Update = function() end,
+			OnInputChanged = function() end,
+			OnActivated = function() end
+		}
+	end
+
+	-- Mocks de compatibilidade robustos gerados dinamicamente
+	local AntiAFK = criarMock("AntiAFK", false)
+	local ComputerAutoFarm = criarMock("ComputerAutoFarm", false)
+	local KeepComputer = criarMock("KeepComputer", false)
+	local AutoHideHack = criarMock("AutoHideHack", false)
+	local UseMinimalTeleport = criarMock("UseMinimalTeleport", true)
+	local TeleportInsteadTweenPCFarm = criarMock("TeleportInsteadTweenPCFarm", false)
+	local TeleportToFreezePod = criarMock("TeleportToFreezePod", false)
+	local TeleportToExitDoor = criarMock("TeleportToExitDoor", false)
+	local FreezePodOnce = criarMock("FreezePodOnce", true)
+	local ExitCancel = criarMock("ExitCancel", false)
+	local WaitForSave = criarMock("WaitForSave", false)
+	local WaitSaveDelay = criarMock("WaitSaveDelay", 0)
+	local ForcedTogglesDisabled = criarMock("ForcedTogglesDisabled", false)
+	local FarmTweenSpeed = criarMock("FarmTweenSpeed", 16)
+	local WaitTweenFast = criarMock("WaitTweenFast", 8)
+	local MinimumDuration = criarMock("MinimumDuration", 5)
+	local StudsPerDelay = criarMock("StudsPerDelay", 16)
+	local TriggerPrioritization = criarMock("TriggerPrioritization", 1)
+	local CampTweenAnimOut = criarMock("CampTweenAnimOut", 30)
+	local CampHackOut = criarMock("CampHackOut", 30)
+	local CampFreezePodOut = criarMock("CampFreezePodOut", 30)
+	local CampEscapeOut = criarMock("CampEscapeOut", 30)
+	local TriggerUnCampOut = criarMock("TriggerUnCampOut", 5)
+	local HideBeastNear = criarMock("HideBeastNear", false)
+	local HideBeastNearDist = criarMock("HideBeastNearDist", 35)
+	local HackBanUnbanTime = criarMock("HackBanUnbanTime", 5)
+	local AntiPCError = criarMock("AntiPCError", false)
+	local UnTieMe = criarMock("UnTieMe", false)
 
 	local function IsThereChar(APlr)
 		local plr = APlr or Players.LocalPlayer
@@ -218,7 +235,7 @@ local UnTieMe = criarMock("UnTieMe", false)
 						task.wait()
 						if not bnhide and v:FindFirstChild("PodTrigger") then
 							Players.LocalPlayer.Character:PivotTo(v.PodTrigger.CFrame)
-							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.PodTrigger.Event)
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
 							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
 						end
 					until not v:FindFirstChild("PodTrigger") or v.PodTrigger.ActionSign.Value ~= 31 or bnhideelapse >= CampFreezePodOut:GetValue()
@@ -353,7 +370,7 @@ local UnTieMe = criarMock("UnTieMe", false)
 						repeat
 							task.wait()
 							FreeAllPods(v)
-							if TaskGood() and not bnhide and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" then
+							if TaskGood() and not bnhide() and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" then
 								Tries += 1
 								if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
 									Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = false
