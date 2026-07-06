@@ -95,108 +95,610 @@ local tabs = {}
 local tabButtons = {}
 
 -- ==========================================
--- DEPENDÊNCIAS E CONFIGURAÇÕES DO AUTO-FARM (KOALA)
+-- DEPENDÊNCIAS E CONFIGURAÇÕES DO AUTO-FARM (KOALA SCOPE)
 -- ==========================================
-local PU = loadstring(game:HttpGet("https://pastebin.com/raw/xAZ4WQRS"))()
-local onsurvivorfarm = false
-local OnBeastFarm = false
-local TempPlayerStatsModule = nil
-local Comp = 0
-local Beast = nil
-local lpos = nil
-local bnhide = false
-local clpos = false
-local bnhideelapse = 0
-local noelepse = 0
-local farmtasks = {}
+local KoalaConfig
+local DoSurvivorFarm
 
--- Configurações de controle do Auto-Farm
-local KoalaConfig = {
-	AntiAFK = false,
-	ComputerAutoFarm = false,
-	KeepComputer = false,
-	AutoHideHack = false,
-	UseMinimalTeleport = true,
-	TeleportInsteadTweenPCFarm = false,
-	TeleportToFreezePod = false,
-	TeleportToExitDoor = false,
-	FreezePodOnce = true,
-	ExitCancel = false,
-	WaitForSave = false,
-	WaitSaveDelay = 0,
-	ForcedTogglesDisabled = false,
-	FarmTweenSpeed = 16,
-	WaitTweenFast = 8,
-	MinimumDuration = 5,
-	StudsPerDelay = 16,
-	TriggerPrioritization = 1,
-	CampTweenAnimOut = 30,
-	CampHackOut = 30,
-	CampFreezePodOut = 30,
-	CampEscapeOut = 30,
-	TriggerUnCampOut = 5,
-	HideBeastNear = false,
-	HideBeastNearDist = 35,
-	HackBanUnbanTime = 5,
-}
+do
+	-- Essas variáveis agora são locais APENAS a este bloco, liberando mais de 35 registradores do escopo global/do arquivo
+	local PU = loadstring(game:HttpGet("https://pastebin.com/raw/xAZ4WQRS"))()
+	local onsurvivorfarm = false
+	local OnBeastFarm = false
+	local TempPlayerStatsModule = nil
+	local Comp = 0
+	local Beast = nil
+	local lpos = nil
+	local bnhide = false
+	local clpos = false
+	local bnhideelapse = 0
+	local noelepse = 0
+	local farmtasks = {}
 
--- Mocks de compatibilidade para evitar refatoração do código do Koala
-local AntiAFK = { GetValue = function() return KoalaConfig.AntiAFK end }
-local ComputerAutoFarm = { GetValue = function() return KoalaConfig.ComputerAutoFarm end }
-local KeepComputer = { GetValue = function() return KoalaConfig.KeepComputer end }
-local AutoHideHack = { GetValue = function() return KoalaConfig.AutoHideHack end }
-local UseMinimalTeleport = { GetValue = function() return KoalaConfig.UseMinimalTeleport end }
-local TeleportInsteadTweenPCFarm = { GetValue = function() return KoalaConfig.TeleportInsteadTweenPCFarm end }
-local TeleportToFreezePod = { GetValue = function() return KoalaConfig.TeleportToFreezePod end }
-local TeleportToExitDoor = { GetValue = function() return KoalaConfig.TeleportToExitDoor end }
-local FreezePodOnce = { GetValue = function() return KoalaConfig.FreezePodOnce end }
-local ExitCancel = { GetValue = function() return KoalaConfig.ExitCancel end }
-local WaitForSave = { GetValue = function() return KoalaConfig.WaitForSave end }
-local WaitSaveDelay = { GetValue = function() return KoalaConfig.WaitSaveDelay end }
-local ForcedTogglesDisabled = { GetValue = function() return KoalaConfig.ForcedTogglesDisabled end }
-local FarmTweenSpeed = { GetValue = function() return KoalaConfig.FarmTweenSpeed end }
-local WaitTweenFast = { GetValue = function() return KoalaConfig.WaitTweenFast end }
-local MinimumDuration = { GetValue = function() return KoalaConfig.MinimumDuration end }
-local StudsPerDelay = { GetValue = function() return KoalaConfig.StudsPerDelay end }
-local TriggerPrioritization = { GetValue = function() return KoalaConfig.TriggerPrioritization end }
-local CampTweenAnimOut = { GetValue = function() return KoalaConfig.CampTweenAnimOut end }
-local CampHackOut = { GetValue = function() return KoalaConfig.CampHackOut end }
-local CampFreezePodOut = { GetValue = function() return KoalaConfig.CampFreezePodOut end }
-local CampEscapeOut = { GetValue = function() return KoalaConfig.CampEscapeOut end }
-local TriggerUnCampOut = { GetValue = function() return KoalaConfig.TriggerUnCampOut end }
-local HideBeastNear = { GetValue = function() return KoalaConfig.HideBeastNear end }
-local HideBeastNearDist = { GetValue = function() return KoalaConfig.HideBeastNearDist end }
-local HackBanUnbanTime = { GetValue = function() return KoalaConfig.HackBanUnbanTime end }
+	KoalaConfig = {
+		AntiAFK = false,
+		ComputerAutoFarm = false,
+		KeepComputer = false,
+		AutoHideHack = false,
+		UseMinimalTeleport = true,
+		TeleportInsteadTweenPCFarm = false,
+		TeleportToFreezePod = false,
+		TeleportToExitDoor = false,
+		FreezePodOnce = true,
+		ExitCancel = false,
+		WaitForSave = false,
+		WaitSaveDelay = 0,
+		ForcedTogglesDisabled = false,
+		FarmTweenSpeed = 16,
+		WaitTweenFast = 8,
+		MinimumDuration = 5,
+		StudsPerDelay = 16,
+		TriggerPrioritization = 1,
+		CampTweenAnimOut = 30,
+		CampHackOut = 30,
+		CampFreezePodOut = 30,
+		CampEscapeOut = 30,
+		TriggerUnCampOut = 5,
+		HideBeastNear = false,
+		HideBeastNearDist = 35,
+		HackBanUnbanTime = 5,
+	}
 
--- ==========================================
--- FUNÇÕES DE INFRAESTRUTURA E SELEÇÃO DE PERSONAGEM
--- ==========================================
+	-- Mocks de compatibilidade localizados
+	local AntiAFK = { GetValue = function() return KoalaConfig.AntiAFK end }
+	local ComputerAutoFarm = { GetValue = function() return KoalaConfig.ComputerAutoFarm end }
+	local KeepComputer = { GetValue = function() return KoalaConfig.KeepComputer end }
+	local AutoHideHack = { GetValue = function() return KoalaConfig.AutoHideHack end }
+	local UseMinimalTeleport = { GetValue = function() return KoalaConfig.UseMinimalTeleport end }
+	local TeleportInsteadTweenPCFarm = { GetValue = function() return KoalaConfig.TeleportInsteadTweenPCFarm end }
+	local TeleportToFreezePod = { GetValue = function() return KoalaConfig.TeleportToFreezePod end }
+	local TeleportToExitDoor = { GetValue = function() return KoalaConfig.TeleportToExitDoor end }
+	local FreezePodOnce = { GetValue = function() return KoalaConfig.FreezePodOnce end }
+	local ExitCancel = { GetValue = function() return KoalaConfig.ExitCancel end }
+	local WaitForSave = { GetValue = function() return KoalaConfig.WaitForSave end }
+	local WaitSaveDelay = { GetValue = function() return KoalaConfig.WaitSaveDelay end }
+	local ForcedTogglesDisabled = { GetValue = function() return KoalaConfig.ForcedTogglesDisabled end }
+	local FarmTweenSpeed = { GetValue = function() return KoalaConfig.FarmTweenSpeed end }
+	local WaitTweenFast = { GetValue = function() return KoalaConfig.WaitTweenFast end }
+	local MinimumDuration = { GetValue = function() return KoalaConfig.MinimumDuration end }
+	local StudsPerDelay = { GetValue = function() return KoalaConfig.StudsPerDelay end }
+	local TriggerPrioritization = { GetValue = function() return KoalaConfig.TriggerPrioritization end }
+	local CampTweenAnimOut = { GetValue = function() return KoalaConfig.CampTweenAnimOut end }
+	local CampHackOut = { GetValue = function() return KoalaConfig.CampHackOut end }
+	local CampFreezePodOut = { GetValue = function() return KoalaConfig.CampFreezePodOut end }
+	local CampEscapeOut = { GetValue = function() return KoalaConfig.CampEscapeOut end }
+	local TriggerUnCampOut = { GetValue = function() return KoalaConfig.TriggerUnCampOut end }
+	local HideBeastNear = { GetValue = function() return KoalaConfig.HideBeastNear end }
+	local HideBeastNearDist = { GetValue = function() return KoalaConfig.HideBeastNearDist end }
+	local HackBanUnbanTime = { GetValue = function() return KoalaConfig.HackBanUnbanTime end }
 
--- Retorna referências do Personagem de forma dinâmica
-local function GetCharacter()
-	local character = LocalPlayer.Character
-	if not character then return nil, nil, nil end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	return character, rootPart, humanoid
-end
-
--- Verifica se o Personagem especificado existe e é válido
-local function IsThereChar(APlr)
-	local plr = APlr or Players.LocalPlayer
-	if plr.Character and plr.Character:FindFirstChild("Humanoid") then
-		return true
+	local function IsThereChar(APlr)
+		local plr = APlr or Players.LocalPlayer
+		if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+			return true
+		end
+		return false
 	end
-	return false
-end
 
--- Teleporta o jogador de volta ao Spawn Pad do Lobby com segurança
-local function TPPlayerSpawn()
-	if IsThereChar() then
-		Players.LocalPlayer.Character:PivotTo(Workspace.LobbySpawnPad.CFrame * CFrame.new(0, 3, 0))
+	local function TPPlayerSpawn()
+		if IsThereChar() then
+			Players.LocalPlayer.Character:PivotTo(Workspace.LobbySpawnPad.CFrame * CFrame.new(0, 3, 0))
+		end
 	end
-end
 
+	DoSurvivorFarm = function()
+		local DoNotTeleport = false
+
+		local function PlayerReady()
+			if not TempPlayerStatsModule or TempPlayerStatsModule.IsBeast.Value or TempPlayerStatsModule.Health.Value <= 0 or not IsThereChar() then
+				return false
+			end
+			return true
+		end
+
+		local function TaskGood()
+			if string.find(string.lower(ReplicatedStorage.GameStatus.Value), "game over") or string.find(string.lower(ReplicatedStorage.GameStatus.Value), "intermission") or not PlayerReady() then
+				return false
+			end
+			return true
+		end
+
+		local function GetMapObjects()
+			local Result = {}
+			Result.Computers = {}
+			Result.FreezePods = {}
+			Result.ExitDoors = {}
+
+			if ReplicatedStorage.CurrentMap.Value then
+				for i, v in pairs(ReplicatedStorage.CurrentMap.Value:GetChildren()) do
+					if v.Name == "ComputerTable" then
+						table.insert(Result.Computers, v)
+					elseif v.Name == "FreezePod" then
+						table.insert(Result.FreezePods, v)
+					elseif v.Name == "ExitDoor" then
+						table.insert(Result.ExitDoors, v)
+					end
+				end
+			end
+
+			return Result
+		end
+		local MapObjects = GetMapObjects()
+
+		local IsFreeing = false
+		local HadSaved = false
+		local GoTween
+		local CheckingPods = false
+
+		local function FreeAllPods(ToGo)
+			if CheckingPods then return end
+			CheckingPods = true
+			for i, v in ipairs(MapObjects.FreezePods) do
+				if TaskGood() and v:FindFirstChild("PodTrigger") and v.PodTrigger.ActionSign.Value == 31 and ((FreezePodOnce:GetValue() == true and HadSaved == false) or FreezePodOnce:GetValue() == false) then
+					IsFreeing = true
+					GoTween(v.PodTrigger, true, TeleportToFreezePod:GetValue())
+					repeat
+						task.wait()
+						if not bnhide and v:FindFirstChild("PodTrigger") then
+							Players.LocalPlayer.Character:PivotTo(v.PodTrigger.CFrame)
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.PodTrigger.Event)
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+						end
+					until not v:FindFirstChild("PodTrigger") or v.PodTrigger.ActionSign.Value ~= 31 or bnhideelapse >= CampFreezePodOut:GetValue()
+					if bnhideelapse >= CampFreezePodOut:GetValue() then
+						lpos = Players.LocalPlayer.Character:GetPivot()
+					end
+					if v:FindFirstChild("PodTrigger") and v.PodTrigger.ActionSign.Value ~= 31 then
+						HadSaved = true
+					end
+					if ToGo then
+						GoTween(ToGo, true, TeleportToFreezePod:GetValue())
+					end
+					IsFreeing = false
+				end
+			end
+			CheckingPods = false
+		end
+
+		GoTween = function(Part, IsPod, TeleportInstead, TeleportDelay)
+			if not TeleportInstead then
+				local Distance = (Players.LocalPlayer.Character.HumanoidRootPart.Position - Part.Position).Magnitude
+				local NewTween = TweenService:Create(
+					Players.LocalPlayer.Character.HumanoidRootPart,
+					TweenInfo.new(Distance / FarmTweenSpeed:GetValue(), Enum.EasingStyle.Linear),
+					{ CFrame = Part.CFrame }
+				)
+				NewTween:Play()
+
+				repeat
+					task.wait()
+					if bnhide then
+						NewTween:Pause()
+						lpos = Players.LocalPlayer.Character.HumanoidRootPart.CFrame
+					elseif NewTween.PlaybackState == Enum.PlaybackState.Paused then
+						NewTween:Play()
+					end
+
+					if bnhideelapse >= CampTweenAnimOut:GetValue() then
+						lpos = Part.CFrame
+						bnhideelapse = 0
+						NewTween:Cancel()
+					elseif not TaskGood() then
+						NewTween:Cancel()
+					elseif not IsFreeing and not IsPod and not CheckingPods then
+						coroutine.wrap(function()
+							FreeAllPods(Part)
+						end)()
+					elseif IsFreeing and not IsPod then
+						NewTween:Cancel()
+					end
+				until NewTween.PlaybackState == Enum.PlaybackState.Completed or NewTween.PlaybackState == Enum.PlaybackState.Cancelled
+			end
+			if TeleportDelay and TeleportInstead then
+				task.wait(TeleportDelay)
+			end
+			if IsThereChar() then
+				Players.LocalPlayer.Character:PivotTo(Part.CFrame)
+			end
+		end
+
+		local OnComputer = false
+		local ChosenComputer = nil
+		local ComputerBanList = {}
+		local CurrentComputer = nil
+		local FirstPC = true
+		local LastPC = nil
+
+		local function GetComputer(Computer)
+			if TaskGood() and Computer.Screen.BrickColor ~= BrickColor.new("Dark green") and not OnComputer then
+				OnComputer = true
+
+				local Prioritize = TriggerPrioritization:GetValue()
+				local Triggers = nil
+
+				if Prioritize == 1 then
+					Triggers = {
+						Computer:FindFirstChild("ComputerTrigger1"),
+						Computer:FindFirstChild("ComputerTrigger2"),
+						Computer:FindFirstChild("ComputerTrigger3"),
+					}
+				elseif Prioritize == 2 then
+					Triggers = {
+						Computer:FindFirstChild("ComputerTrigger2"),
+						Computer:FindFirstChild("ComputerTrigger3"),
+						Computer:FindFirstChild("ComputerTrigger1"),
+					}
+				else
+					Triggers = {
+						Computer:FindFirstChild("ComputerTrigger3"),
+						Computer:FindFirstChild("ComputerTrigger1"),
+						Computer:FindFirstChild("ComputerTrigger2"),
+					}
+				end
+
+				local hadteleported = false
+
+				for i, v in ipairs(Triggers) do
+					if v and TaskGood() and v.ActionSign.Value == 20 and Computer.Screen.BrickColor ~= BrickColor.new("Dark green") and ChosenComputer == Computer then
+						local Distance = (Players.LocalPlayer.Character.HumanoidRootPart.Position - v.Position).Magnitude
+
+						if (Distance / FarmTweenSpeed:GetValue() < WaitTweenFast:GetValue()) and not FirstPC and not TeleportInsteadTweenPCFarm:GetValue() and LastPC ~= Computer then
+							local Time = Distance / FarmTweenSpeed:GetValue()
+							task.wait(WaitTweenFast:GetValue() - Time)
+						end
+
+						repeat
+							task.wait()
+						until not TaskGood() or bnhide == false or bnhideelapse >= CampHackOut:GetValue()
+						if bnhideelapse >= CampHackOut:GetValue() then
+							lpos = Players.LocalPlayer.Character:GetPivot()
+						end
+
+						if hadteleported or FirstPC or LastPC == Computer then
+							GoTween(v, nil, TeleportInsteadTweenPCFarm:GetValue())
+						else
+							local GotDelay = WaitTweenFast:GetValue()
+							if UseMinimalTeleport:GetValue() then
+								local NewDelay = Distance / StudsPerDelay:GetValue()
+								GotDelay = math.clamp(NewDelay, math.min(MinimumDuration:GetValue(), WaitTweenFast:GetValue()), WaitTweenFast:GetValue())
+							end
+							GoTween(v, nil, TeleportInsteadTweenPCFarm:GetValue(), GotDelay)
+						end
+						hadteleported = true
+						FirstPC = false
+						LastPC = Computer
+
+						if Computer.Screen.BrickColor == BrickColor.new("Dark green") then CurrentComputer = nil; OnComputer = false; return end
+						if not TaskGood() then CurrentComputer = nil; OnComputer = false; return end
+						if v.ActionSign.Value ~= 20 or (ChosenComputer ~= Computer and ChosenComputer ~= nil) then continue end
+
+						local Tries = 0
+						repeat
+							task.wait()
+							FreeAllPods(v)
+							if TaskGood() and not bnhide and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" then
+								Tries += 1
+								if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
+									Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = false
+								end
+								Players.LocalPlayer.Character:PivotTo(v.CFrame)
+								ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
+								ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+								task.wait(0.5)
+								if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
+									Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = true
+								end
+							elseif TaskGood() and not bnhide and not IsFreeing then
+								CurrentComputer = Computer
+								Tries = 0
+								if AutoHideHack:GetValue() then
+									Players.LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
+									ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
+									ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+								end
+							end
+							if bnhideelapse >= CampHackOut:GetValue() and not IsFreeing then
+								ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
+								lpos = Players.LocalPlayer.Character:GetPivot()
+								OnComputer = false
+								CurrentComputer = nil
+								bnhideelapse = 0
+								return
+							end
+
+							if Tries >= 5 and TaskGood() and not bnhide and not IsFreeing then
+								CurrentComputer = nil
+								OnComputer = false
+								local TriggerGood = false
+								for i2, v2 in ipairs(Triggers) do
+									if v2 and v2.ActionSign.Value == 20 then
+										TriggerGood = true
+									end
+								end
+								if not TriggerGood then
+									ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
+								end
+								return
+							end
+						until not TaskGood() or Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil)
+						if TaskGood() and TeleportInsteadTweenPCFarm:GetValue() then
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", false, v.Event)
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", false)
+							Players.LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
+						end
+						if Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil) then
+							CurrentComputer = nil
+							OnComputer = false
+							return
+						end
+					end
+				end
+
+				CurrentComputer = nil
+				OnComputer = false
+			end
+		end
+
+		local function Run()
+			local CancelComputers = false
+			local LeastTriggers = 4
+			local Closest = math.huge
+			local ComputersLeft = 0
+
+			if WaitForSave:GetValue() then
+				repeat task.wait() until ReplicatedStorage.IsGameActive.Value
+				task.wait(WaitSaveDelay:GetValue())
+				repeat
+					task.wait(WaitSaveDelay:GetValue())
+					FreeAllPods()
+				until not TaskGood() or HadSaved
+			end
+
+			coroutine.wrap(function()
+				while TaskGood() do
+					task.wait()
+					ComputersLeft = 0
+					LeastTriggers = 4
+					Closest = math.huge
+
+					if ChosenComputer and ChosenComputer.Screen.BrickColor == BrickColor.new("Dark green") then
+						ChosenComputer = nil
+					end
+
+					for i, v in ipairs(MapObjects.Computers) do
+						if v.Screen.BrickColor ~= BrickColor.new("Dark green") then
+							ComputersLeft += 1
+						end
+
+						if ChosenComputer and KeepComputer:GetValue() then
+							continue
+						end
+
+						local UseTrigger = v:FindFirstChild("ComputerTrigger3")
+						local FoundV = nil
+						local FoundI = nil
+
+						for i2, v2 in pairs(ComputerBanList) do
+							if UseTrigger and Beast and v2 == v and DateTime.now().UnixTimestampMillis - i2 > HackBanUnbanTime:GetValue() and (UseTrigger.Position - Beast.Character.HumanoidRootPart.Position).Magnitude > HideBeastNearDist:GetValue() + 10 then
+								ComputerBanList[i2] = nil
+							elseif v2 == v then
+								FoundV = v2
+								FoundI = i2
+							end
+						end
+
+						if v.Screen.BrickColor ~= BrickColor.new("Dark green") and not FoundV then
+							local Triggers = {
+								v:FindFirstChild("ComputerTrigger3"),
+								v:FindFirstChild("ComputerTrigger2"),
+								v:FindFirstChild("ComputerTrigger1"),
+							}
+
+							local Distance = (Triggers[1].Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+							local AmtTriggers = 3
+
+							for i2, v2 in ipairs(Triggers) do
+								if v2 and v2.ActionSign.Value ~= 20 then
+									AmtTriggers -= 1
+								end
+							end
+
+							if v == CurrentComputer and AmtTriggers and AmtTriggers >= 1 then
+								AmtTriggers += 1
+							elseif AmtTriggers < 1 then
+								AmtTriggers = -1
+							end
+
+							if ((AmtTriggers >= 1 or AmtTriggers == -1) and AmtTriggers <= LeastTriggers) then
+								if AmtTriggers == LeastTriggers and Distance > Closest then
+									continue
+								end
+
+								ChosenComputer = v
+								LeastTriggers = AmtTriggers
+								Closest = Distance
+							end
+						end
+					end
+				end
+			end)()
+
+			repeat
+				task.wait(0.5)
+				if ChosenComputer and not OnComputer then
+					GetComputer(ChosenComputer)
+					if ComputersLeft <= 1 then
+						CancelComputers = true
+					end
+				elseif ComputersLeft < 1 then
+					CancelComputers = true
+				end
+			until not TaskGood() or CancelComputers
+
+			if not TaskGood() or ExitCancel:GetValue() then
+				return
+			end
+
+			repeat
+				task.wait()
+				for i, v in ipairs(MapObjects.ExitDoors) do
+					if not TaskGood() then continue end
+
+					repeat task.wait() until not TaskGood() or bnhide == false or bnhideelapse >= CampEscapeOut:GetValue()
+
+					if v:FindFirstChild("ExitDoorTrigger") then
+						GoTween(v.ExitDoorTrigger, nil, TeleportToExitDoor:GetValue())
+						repeat
+							task.wait()
+							if v:FindFirstChild("ExitDoorTrigger") and v.ExitDoorTrigger.ActionSign.Value ~= 0 and not bnhide then
+								Players.LocalPlayer.Character:PivotTo(v.ExitDoorTrigger.CFrame * CFrame.new(0, v.ExitDoorTrigger.Size.Y / 2, 0))
+								ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.ExitDoorTrigger.Event)
+								ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+								task.wait(0.5)
+							end
+						until not TaskGood() or not v:FindFirstChild("ExitDoorTrigger") or bnhideelapse >= CampEscapeOut:GetValue()
+
+						if bnhideelapse >= CampEscapeOut:GetValue() then
+							lpos = Players.LocalPlayer.Character:GetPivot()
+							bnhideelapse = 0
+							continue
+						end
+					end
+
+					if TaskGood() then
+						task.wait(0.5)
+						GoTween(v.ExitArea, nil, TeleportToExitDoor:GetValue())
+					end
+				end
+			until not TaskGood()
+		end
+
+		local NewFarmTask = coroutine.create(function()
+			if PlayerReady() and not onsurvivorfarm then
+				onsurvivorfarm = true
+				local NewAttachment
+				if IsThereChar() then
+					NewAttachment = Instance.new("Attachment")
+					NewAttachment.Name = "KSAttachmentZVel"
+					NewAttachment.Parent = Players.LocalPlayer.Character.HumanoidRootPart
+
+					local NewLinearVelocity = Instance.new("LinearVelocity")
+					NewLinearVelocity.Attachment0 = NewAttachment
+					NewLinearVelocity.MaxForce = math.huge
+					NewLinearVelocity.Parent = NewAttachment
+
+					local NewAngularVelocity = Instance.new("AngularVelocity")
+					NewAngularVelocity.Attachment0 = NewAttachment
+					NewAngularVelocity.MaxTorque = math.huge
+					NewAngularVelocity.Parent = NewAttachment
+				end
+
+				pcall(Run)
+
+				if not DoNotTeleport then
+					task.wait(1)
+					TPPlayerSpawn()
+				end
+				if NewAttachment then
+					NewAttachment:Destroy()
+				end
+				onsurvivorfarm = false
+			end
+		end)
+		coroutine.resume(NewFarmTask)
+		table.insert(farmtasks, NewFarmTask)
+	end
+
+	-- Loop contínuo em segundo plano para manter as referências e evasões ativas
+	task.spawn(function()
+		while true do
+			local dt = task.wait()
+
+			-- Mantém a referência do TempPlayerStatsModule do jogador
+			if IsThereChar() then
+				TempPlayerStatsModule = Players.LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+
+				-- Evasão de queda no vácuo
+				if Players.LocalPlayer.Character.HumanoidRootPart.Position.Y < -3000 then
+					TPPlayerSpawn()
+				end
+			end
+
+			-- Sincroniza configurações forçadas do Auto-Farm do Koala
+			if onsurvivorfarm and not ForcedTogglesDisabled:GetValue() then
+				if ExitCancel:GetValue() then
+					KoalaConfig.HideBeastNear = false
+				else
+					KoalaConfig.HideBeastNear = true
+				end
+			end
+
+			-- Evasão de Proximidade da Fera
+			if HideBeastNear:GetValue() and IsThereChar() and Beast ~= nil and IsThereChar(Beast) and TempPlayerStatsModule and TempPlayerStatsModule.IsBeast.Value == false then
+				if lpos and ((Beast.Character.HumanoidRootPart.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < HideBeastNearDist:GetValue() or TempPlayerStatsModule.Ragdoll.Value == true or bnhide == true) then
+					Players.LocalPlayer.Character:PivotTo(Beast.Character:GetPivot() * CFrame.new(0, 25 + HideBeastNearDist:GetValue(), 0))
+					bnhide = true
+				elseif bnhide == false and clpos == false then
+					lpos = Players.LocalPlayer.Character:GetPivot()
+				end
+
+				if lpos and bnhide == true and (Beast.Character.HumanoidRootPart.Position - lpos.Position).Magnitude > HideBeastNearDist:GetValue() + 10 and TempPlayerStatsModule.Ragdoll.Value == false then
+					Players.LocalPlayer.Character:PivotTo(lpos)
+					bnhide = false
+				end
+			end
+
+			if bnhide then
+				bnhideelapse = bnhideelapse + dt
+				noelepse = 0
+			else
+				noelepse = noelepse + dt
+				if noelepse > TriggerUnCampOut:GetValue() then
+					bnhideelapse = 0
+				end
+			end
+		end
+	end)
+
+	-- Monitor do estado de jogo para detecção da Fera e controle de fluxo do Auto-Farm
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			if ReplicatedStorage:FindFirstChild("CurrentMap") and ReplicatedStorage.CurrentMap.Value then
+				local mapValue = ReplicatedStorage.CurrentMap.Value
+				local currentCompCount = 0
+				for _, child in ipairs(mapValue:GetChildren()) do
+					if child.Name == "ComputerTable" then
+						currentCompCount = currentCompCount + 1
+					end
+				end
+
+				if currentCompCount ~= Comp then
+					Comp = currentCompCount
+					if currentCompCount > 0 then
+						-- Nova partida iniciou
+						task.wait(3)
+						for _, p in ipairs(Players:GetPlayers()) do
+							if p:FindFirstChild("TempPlayerStatsModule") and p.TempPlayerStatsModule.IsBeast.Value then
+								Beast = p
+							end
+						end
+						if KoalaConfig.ComputerAutoFarm then
+							DoSurvivorFarm()
+						end
+					else
+						-- Retornou para o lobby/partida acabou
+						Beast = nil
+						for _, t in ipairs(farmtasks) do
+							pcall(function() coroutine.close(t) end)
+						end
+						onsurvivorfarm = false
+					end
+				end
+			end
+		end
+	end)
+end
 -- ==========================================
 -- COMPONENTES VISUAIS E UTILS DE CORES
 -- ==========================================
@@ -573,429 +1075,7 @@ local function toggleChams()
 	end
 end
 
--- Lógica principal do Survivor Farm extraída do Koala Scripts
-local function DoSurvivorFarm()
-	local DoNotTeleport = false
 
-	local function PlayerReady()
-		if not TempPlayerStatsModule or TempPlayerStatsModule.IsBeast.Value or TempPlayerStatsModule.Health.Value <= 0 or not IsThereChar() then
-			return false
-		end
-		return true
-	end
-
-	local function TaskGood()
-		if string.find(string.lower(ReplicatedStorage.GameStatus.Value), "game over") or string.find(string.lower(ReplicatedStorage.GameStatus.Value), "intermission") or not PlayerReady() then
-			return false
-		end
-		return true
-	end
-
-	local function GetMapObjects()
-		local Result = {}
-		Result.Computers = {}
-		Result.FreezePods = {}
-		Result.ExitDoors = {}
-
-		if ReplicatedStorage.CurrentMap.Value then
-			for i, v in pairs(ReplicatedStorage.CurrentMap.Value:GetChildren()) do
-				if v.Name == "ComputerTable" then
-					table.insert(Result.Computers, v)
-				elseif v.Name == "FreezePod" then
-					table.insert(Result.FreezePods, v)
-				elseif v.Name == "ExitDoor" then
-					table.insert(Result.ExitDoors, v)
-				end
-			end
-		end
-
-		return Result
-	end
-	local MapObjects = GetMapObjects()
-
-	local IsFreeing = false
-	local HadSaved = false
-	local GoTween
-	local CheckingPods = false
-
-	local function FreeAllPods(ToGo)
-		if CheckingPods then return end
-		CheckingPods = true
-		for i, v in ipairs(MapObjects.FreezePods) do
-			if TaskGood() and v:FindFirstChild("PodTrigger") and v.PodTrigger.ActionSign.Value == 31 and ((FreezePodOnce:GetValue() == true and HadSaved == false) or FreezePodOnce:GetValue() == false) then
-				IsFreeing = true
-				GoTween(v.PodTrigger, true, TeleportToFreezePod:GetValue())
-				repeat
-					task.wait()
-					if not bnhide and v:FindFirstChild("PodTrigger") then
-						Players.LocalPlayer.Character:PivotTo(v.PodTrigger.CFrame)
-						ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.PodTrigger.Event)
-						ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
-					end
-				until not v:FindFirstChild("PodTrigger") or v.PodTrigger.ActionSign.Value ~= 31 or bnhideelapse >= CampFreezePodOut:GetValue()
-				if bnhideelapse >= CampFreezePodOut:GetValue() then
-					lpos = Players.LocalPlayer.Character:GetPivot()
-				end
-				if v:FindFirstChild("PodTrigger") and v.PodTrigger.ActionSign.Value ~= 31 then
-					HadSaved = true
-				end
-				if ToGo then
-					GoTween(ToGo, true, TeleportToFreezePod:GetValue())
-				end
-				IsFreeing = false
-			end
-		end
-		CheckingPods = false
-	end
-
-	GoTween = function(Part, IsPod, TeleportInstead, TeleportDelay)
-		if not TeleportInstead then
-			local Distance = (Players.LocalPlayer.Character.HumanoidRootPart.Position - Part.Position).Magnitude
-			local NewTween = TweenService:Create(
-				Players.LocalPlayer.Character.HumanoidRootPart,
-				TweenInfo.new(Distance / FarmTweenSpeed:GetValue(), Enum.EasingStyle.Linear),
-				{ CFrame = Part.CFrame }
-			)
-			NewTween:Play()
-
-			repeat
-				task.wait()
-				if bnhide then
-					NewTween:Pause()
-					lpos = Players.LocalPlayer.Character.HumanoidRootPart.CFrame
-				elseif NewTween.PlaybackState == Enum.PlaybackState.Paused then
-					NewTween:Play()
-				end
-
-				if bnhideelapse >= CampTweenAnimOut:GetValue() then
-					lpos = Part.CFrame
-					bnhideelapse = 0
-					NewTween:Cancel()
-				elseif not TaskGood() then
-					NewTween:Cancel()
-				elseif not IsFreeing and not IsPod and not CheckingPods then
-					coroutine.wrap(function()
-						FreeAllPods(Part)
-					end)()
-				elseif IsFreeing and not IsPod then
-					NewTween:Cancel()
-				end
-			until NewTween.PlaybackState == Enum.PlaybackState.Completed or NewTween.PlaybackState == Enum.PlaybackState.Cancelled
-		end
-		if TeleportDelay and TeleportInstead then
-			task.wait(TeleportDelay)
-		end
-		if IsThereChar() then
-			Players.LocalPlayer.Character:PivotTo(Part.CFrame)
-		end
-	end
-
-	local OnComputer = false
-	local ChosenComputer = nil
-	local ComputerBanList = {}
-	local CurrentComputer = nil
-	local FirstPC = true
-	local LastPC = nil
-
-	local function GetComputer(Computer)
-		if TaskGood() and Computer.Screen.BrickColor ~= BrickColor.new("Dark green") and not OnComputer then
-			OnComputer = true
-
-			local Prioritize = TriggerPrioritization:GetValue()
-			local Triggers = nil
-
-			if Prioritize == 1 then
-				Triggers = {
-					Computer:FindFirstChild("ComputerTrigger1"),
-					Computer:FindFirstChild("ComputerTrigger2"),
-					Computer:FindFirstChild("ComputerTrigger3"),
-				}
-			elseif Prioritize == 2 then
-				Triggers = {
-					Computer:FindFirstChild("ComputerTrigger2"),
-					Computer:FindFirstChild("ComputerTrigger3"),
-					Computer:FindFirstChild("ComputerTrigger1"),
-				}
-			else
-				Triggers = {
-					Computer:FindFirstChild("ComputerTrigger3"),
-					Computer:FindFirstChild("ComputerTrigger1"),
-					Computer:FindFirstChild("ComputerTrigger2"),
-				}
-			end
-
-			local hadteleported = false
-
-			for i, v in ipairs(Triggers) do
-				if v and TaskGood() and v.ActionSign.Value == 20 and Computer.Screen.BrickColor ~= BrickColor.new("Dark green") and ChosenComputer == Computer then
-					local Distance = (Players.LocalPlayer.Character.HumanoidRootPart.Position - v.Position).Magnitude
-
-					if (Distance / FarmTweenSpeed:GetValue() < WaitTweenFast:GetValue()) and not FirstPC and not TeleportInsteadTweenPCFarm:GetValue() and LastPC ~= Computer then
-						local Time = Distance / FarmTweenSpeed:GetValue()
-						task.wait(WaitTweenFast:GetValue() - Time)
-					end
-
-					repeat
-						task.wait()
-					until not TaskGood() or bnhide == false or bnhideelapse >= CampHackOut:GetValue()
-					if bnhideelapse >= CampHackOut:GetValue() then
-						lpos = Players.LocalPlayer.Character:GetPivot()
-					end
-
-					if hadteleported or FirstPC or LastPC == Computer then
-						GoTween(v, nil, TeleportInsteadTweenPCFarm:GetValue())
-					else
-						local GotDelay = WaitTweenFast:GetValue()
-						if UseMinimalTeleport:GetValue() then
-							local NewDelay = Distance / StudsPerDelay:GetValue()
-							GotDelay = math.clamp(NewDelay, math.min(MinimumDuration:GetValue(), WaitTweenFast:GetValue()), WaitTweenFast:GetValue())
-						end
-						GoTween(v, nil, TeleportInsteadTweenPCFarm:GetValue(), GotDelay)
-					end
-					hadteleported = true
-					FirstPC = false
-					LastPC = Computer
-
-					if Computer.Screen.BrickColor == BrickColor.new("Dark green") then CurrentComputer = nil; OnComputer = false; return end
-					if not TaskGood() then CurrentComputer = nil; OnComputer = false; return end
-					if v.ActionSign.Value ~= 20 or (ChosenComputer ~= Computer and ChosenComputer ~= nil) then continue end
-
-					local Tries = 0
-					repeat
-						task.wait()
-						FreeAllPods(v)
-						if TaskGood() and not bnhide and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" then
-							Tries += 1
-							if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
-								Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = false
-							end
-							Players.LocalPlayer.Character:PivotTo(v.CFrame)
-							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
-							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
-							task.wait(0.5)
-							if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
-								Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = true
-							end
-						elseif TaskGood() and not bnhide and not IsFreeing then
-							CurrentComputer = Computer
-							Tries = 0
-							if AutoHideHack:GetValue() then
-								Players.LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
-								ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
-								ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
-							end
-						end
-						if bnhideelapse >= CampHackOut:GetValue() and not IsFreeing then
-							ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
-							lpos = Players.LocalPlayer.Character:GetPivot()
-							OnComputer = false
-							CurrentComputer = nil
-							bnhideelapse = 0
-							return
-						end
-
-						if Tries >= 5 and TaskGood() and not bnhide and not IsFreeing then
-							CurrentComputer = nil
-							OnComputer = false
-							local TriggerGood = false
-							for i2, v2 in ipairs(Triggers) do
-								if v2 and v2.ActionSign.Value == 20 then
-									TriggerGood = true
-								end
-							end
-							if not TriggerGood then
-								ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
-							end
-							return
-						end
-					until not TaskGood() or Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil)
-					if TaskGood() and TeleportInsteadTweenPCFarm:GetValue() then
-						ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", false, v.Event)
-						ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", false)
-						Players.LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
-					end
-					if Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil) then
-						CurrentComputer = nil
-						OnComputer = false
-						return
-					end
-				end
-			end
-
-			CurrentComputer = nil
-			OnComputer = false
-		end
-	end
-
-	local function Run()
-		local CancelComputers = false
-		local LeastTriggers = 4
-		local Closest = math.huge
-		local ComputersLeft = 0
-
-		if WaitForSave:GetValue() then
-			repeat task.wait() until ReplicatedStorage.IsGameActive.Value
-			task.wait(WaitSaveDelay:GetValue())
-			repeat
-				task.wait(WaitSaveDelay:GetValue())
-				FreeAllPods()
-			until not TaskGood() or HadSaved
-		end
-
-		coroutine.wrap(function()
-			while TaskGood() do
-				task.wait()
-				ComputersLeft = 0
-				LeastTriggers = 4
-				Closest = math.huge
-
-				if ChosenComputer and ChosenComputer.Screen.BrickColor == BrickColor.new("Dark green") then
-					ChosenComputer = nil
-				end
-
-				for i, v in ipairs(MapObjects.Computers) do
-					if v.Screen.BrickColor ~= BrickColor.new("Dark green") then
-						ComputersLeft += 1
-					end
-
-					if ChosenComputer and KeepComputer:GetValue() then
-						continue
-					end
-
-					local UseTrigger = v:FindFirstChild("ComputerTrigger3")
-					local FoundV = nil
-					local FoundI = nil
-
-					for i2, v2 in pairs(ComputerBanList) do
-						if UseTrigger and Beast and v2 == v and DateTime.now().UnixTimestampMillis - i2 > HackBanUnbanTime:GetValue() and (UseTrigger.Position - Beast.Character.HumanoidRootPart.Position).Magnitude > HideBeastNearDist:GetValue() + 10 then
-							ComputerBanList[i2] = nil
-						elseif v2 == v then
-							FoundV = v2
-							FoundI = i2
-						end
-					end
-
-					if v.Screen.BrickColor ~= BrickColor.new("Dark green") and not FoundV then
-						local Triggers = {
-							v:FindFirstChild("ComputerTrigger3"),
-							v:FindFirstChild("ComputerTrigger2"),
-							v:FindFirstChild("ComputerTrigger1"),
-						}
-
-						local Distance = (Triggers[1].Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-						local AmtTriggers = 3
-
-						for i2, v2 in ipairs(Triggers) do
-							if v2 and v2.ActionSign.Value ~= 20 then
-								AmtTriggers -= 1
-							end
-						end
-
-						if v == CurrentComputer and AmtTriggers and AmtTriggers >= 1 then
-							AmtTriggers += 1
-						elseif AmtTriggers < 1 then
-							AmtTriggers = -1
-						end
-
-						if ((AmtTriggers >= 1 or AmtTriggers == -1) and AmtTriggers <= LeastTriggers) then
-							if AmtTriggers == LeastTriggers and Distance > Closest then
-								continue
-							end
-
-							ChosenComputer = v
-							LeastTriggers = AmtTriggers
-							Closest = Distance
-						end
-					end
-				end
-			end
-		end)()
-
-		repeat
-			task.wait(0.5)
-			if ChosenComputer and not OnComputer then
-				GetComputer(ChosenComputer)
-				if ComputersLeft <= 1 then
-					CancelComputers = true
-				end
-			elseif ComputersLeft < 1 then
-				CancelComputers = true
-			end
-		until not TaskGood() or CancelComputers
-
-		if not TaskGood() or ExitCancel:GetValue() then
-			return
-		end
-
-		repeat
-			task.wait()
-			for i, v in ipairs(MapObjects.ExitDoors) do
-				if not TaskGood() then continue end
-
-				repeat task.wait() until not TaskGood() or bnhide == false or bnhideelapse >= CampEscapeOut:GetValue()
-
-				if v:FindFirstChild("ExitDoorTrigger") then
-					GoTween(v.ExitDoorTrigger, nil, TeleportToExitDoor:GetValue())
-					repeat
-						task.wait()
-						if v:FindFirstChild("ExitDoorTrigger") and v.ExitDoorTrigger.ActionSign.Value ~= 0 and not bnhide then
-							Players.LocalPlayer.Character:PivotTo(v.ExitDoorTrigger.CFrame * CFrame.new(0, v.ExitDoorTrigger.Size.Y / 2, 0))
-							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.ExitDoorTrigger.Event)
-							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
-							task.wait(0.5)
-						end
-					until not TaskGood() or not v:FindFirstChild("ExitDoorTrigger") or bnhideelapse >= CampEscapeOut:GetValue()
-
-					if bnhideelapse >= CampEscapeOut:GetValue() then
-						lpos = Players.LocalPlayer.Character:GetPivot()
-						bnhideelapse = 0
-						continue
-					end
-				end
-
-				if TaskGood() then
-					task.wait(0.5)
-					GoTween(v.ExitArea, nil, TeleportToExitDoor:GetValue())
-				end
-			end
-		until not TaskGood()
-	end
-
-	local NewFarmTask = coroutine.create(function()
-		if PlayerReady() and not onsurvivorfarm then
-			onsurvivorfarm = true
-			local NewAttachment
-			if IsThereChar() then
-				NewAttachment = Instance.new("Attachment")
-				NewAttachment.Name = "KSAttachmentZVel"
-				NewAttachment.Parent = Players.LocalPlayer.Character.HumanoidRootPart
-
-				local NewLinearVelocity = Instance.new("LinearVelocity")
-				NewLinearVelocity.Attachment0 = NewAttachment
-				NewLinearVelocity.MaxForce = math.huge
-				NewLinearVelocity.Parent = NewAttachment
-
-				local NewAngularVelocity = Instance.new("AngularVelocity")
-				NewAngularVelocity.Attachment0 = NewAttachment
-				NewAngularVelocity.MaxTorque = math.huge
-				NewAngularVelocity.Parent = NewAttachment
-			end
-
-			pcall(Run)
-
-			if not DoNotTeleport then
-				task.wait(1)
-				TPPlayerSpawn()
-			end
-			if NewAttachment then
-				NewAttachment:Destroy()
-			end
-			onsurvivorfarm = false
-		end
-	end)
-	coroutine.resume(NewFarmTask)
-	table.insert(farmtasks, NewFarmTask)
-end
 
 -- Loop contínuo em segundo plano para manter as referências e evasões ativas
 task.spawn(function()
