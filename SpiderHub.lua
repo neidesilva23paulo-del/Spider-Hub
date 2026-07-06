@@ -1,10 +1,8 @@
 --[[
     ================================================================
-                     SPIDER HUB & KOALA SCRIPTS (UNIFICADO)
+                           SPIDER HUB (V1.8)
     ================================================================
-    Aplicação integrada com interface escura moderna, responsiva,
-    contendo todas as automações de Flee The Facility (Auto-Farm, 
-    ESPs, Trolls, Evasão e Utilitários).
+    Aplicação unificada com interface moderna, modular e responsiva.
 ]]
 
 -- Serviços do Roblox
@@ -16,30 +14,23 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
 local CollectionService = game:GetService("CollectionService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Evitar duplicidade de interface
+-- Destruir versão antiga se já existir para evitar duplicidade
 if PlayerGui:FindFirstChild("SpiderHubGui") then
 	PlayerGui.SpiderHubGui:Destroy()
 end
 
 -- Tenta obter o RemoteEvent do jogo com segurança
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvent = ReplicatedStorage:FindFirstChild("RemoteEvent")
 if not RemoteEvent then
 	task.spawn(function()
 		RemoteEvent = ReplicatedStorage:WaitForChild("RemoteEvent", 10)
 	end)
 end
-
--- Tenta carregar bibliotecas auxiliares do Koala Scripts
-local PU
-pcall(function()
-	PU = loadstring(game:HttpGet("https://pastebin.com/raw/xAZ4WQRS"))()
-end)
 
 -- ==========================================
 -- ESTADOS DO SISTEMA (VARIÁVEIS DE CONTROLE)
@@ -72,86 +63,16 @@ local mouseUnlockActive = false
 local mouseUnlockConnection
 local mouseUnlockBtn = nil
 
--- Tabela de progresso persistente dos computadores
+-- Tabela para rastreamento de progresso persistente dos PCs
 local pcProgressTracker = {}
 
--- Lógicas e Configurações Portadas do Koala Scripts (Auto Farm & Variáveis)
-local onsurvivorfarm = false
-local OnBeastFarm = false
-local bnhide = false
-local clpos = false
-local bnhideelapse = 0
-local noelepse = 0
-local lpos = nil
-local Comp = 0
-local Beast = nil
-local farmtasks = {}
-local TempPlayerStatsModule = nil
+-- Estados do Flee The Facility (Koala Scripts)
+local speedHackCrawlActive = false
+local autoHideFromSeerActive = false
+local lastSeerHidePos = nil
+local hadSeerHide = false
 
--- Configurações padrão do Auto Farm
-local KeepComputer = false
-local AutoHideHack = false
-local UseMinimalTeleport = true
-local TeleportInsteadTweenPCFarm = false
-local TeleportToFreezePod = false
-local TeleportToExitDoor = false
-local FreezePodOnce = true
-local ExitCancel = false
-local WaitForSave = false
-local WaitSaveDelay = 0
-local ForcedTogglesDisabled = false
-local FarmTweenSpeed = 16
-local WaitTweenFast = 8
-local MinimumDuration = 5
-local StudsPerDelay = 16
-local TriggerPrioritization = 1
-local TriggerUnCampOut = 5
-local CampTweenAnimOut = 30
-local CampHackOut = 30
-local HackBanUnbanTime = 5
-local CampFreezePodOut = 30
-local CampEscapeOut = 30
-
--- Configurações Beast Farm
-local WaitForExitBeastFarm = false
-local CaptureForSave = false
-local BeastInstantTP = false
-local BeastFarmTweenSpeed = 25
-local BeastThreshold = 4
-
--- Configurações Adicionais & Troll
-local SlowBeast = false
-local UnTieAll = false
-local UnTieMe = false
-local Beast3rdPerson = false
-local AntiPCError = false
-local RagdollMovement = false
-local AutoHideFromSeer = false
-local ReturnFromHideSeer = false
-local SpeedHackCrawlActive = false
-local HackCrawlWPeople = false
-local HackCrawlType = 0 -- 0: Crawl, 1: Jump, 2: Air
-local HackCrawlTime = 0.33
-local HackCrawlDelay = 0.2
-local AlertModerator = false
-local KickOnModerator = false
-local HideBeastNear = false
-local HideBeastNearDist = 35
-local BeastTieRange = 0
-local HitboxScale = 1
-
--- Soundboard Troll Configs
-local STSpamPercentage = 50
-local STSpamCorrect = false
-local STSpamWarning = false
-local STSpamSafe = false
-local STSpamDetected = false
-local STSpamSeen = false
-local STSpamErrorAll = false
-local STSpamErrorOne = false
-local STSpamExitsUnlock = false
-
--- Variáveis do Inspetor de Instâncias
+-- Variáveis do Inspetor
 local InspectorActive = false
 local SelectedInstance = nil
 local OriginalColor = nil
@@ -169,14 +90,89 @@ local lastIteration = tick()
 local frameHistory = {}
 local fps = 0
 
--- Containers de UI
+-- UI Element Containers
 local tabs = {}
 local tabButtons = {}
 
 -- ==========================================
--- FUNÇÕES AUXILIARES E DE INFRAESTRUTURA
+-- DEPENDÊNCIAS E CONFIGURAÇÕES DO AUTO-FARM (KOALA)
+-- ==========================================
+local PU = loadstring(game:HttpGet("https://pastebin.com/raw/xAZ4WQRS"))()
+local onsurvivorfarm = false
+local OnBeastFarm = false
+local TempPlayerStatsModule = nil
+local Comp = 0
+local Beast = nil
+local lpos = nil
+local bnhide = false
+local clpos = false
+local bnhideelapse = 0
+local noelepse = 0
+local farmtasks = {}
+
+-- Configurações de controle do Auto-Farm
+local KoalaConfig = {
+	AntiAFK = false,
+	ComputerAutoFarm = false,
+	KeepComputer = false,
+	AutoHideHack = false,
+	UseMinimalTeleport = true,
+	TeleportInsteadTweenPCFarm = false,
+	TeleportToFreezePod = false,
+	TeleportToExitDoor = false,
+	FreezePodOnce = true,
+	ExitCancel = false,
+	WaitForSave = false,
+	WaitSaveDelay = 0,
+	ForcedTogglesDisabled = false,
+	FarmTweenSpeed = 16,
+	WaitTweenFast = 8,
+	MinimumDuration = 5,
+	StudsPerDelay = 16,
+	TriggerPrioritization = 1,
+	CampTweenAnimOut = 30,
+	CampHackOut = 30,
+	CampFreezePodOut = 30,
+	CampEscapeOut = 30,
+	TriggerUnCampOut = 5,
+	HideBeastNear = false,
+	HideBeastNearDist = 35,
+	HackBanUnbanTime = 5,
+}
+
+-- Mocks de compatibilidade para evitar refatoração do código do Koala
+local AntiAFK = { GetValue = function() return KoalaConfig.AntiAFK end }
+local ComputerAutoFarm = { GetValue = function() return KoalaConfig.ComputerAutoFarm end }
+local KeepComputer = { GetValue = function() return KoalaConfig.KeepComputer end }
+local AutoHideHack = { GetValue = function() return KoalaConfig.AutoHideHack end }
+local UseMinimalTeleport = { GetValue = function() return KoalaConfig.UseMinimalTeleport end }
+local TeleportInsteadTweenPCFarm = { GetValue = function() return KoalaConfig.TeleportInsteadTweenPCFarm end }
+local TeleportToFreezePod = { GetValue = function() return KoalaConfig.TeleportToFreezePod end }
+local TeleportToExitDoor = { GetValue = function() return KoalaConfig.TeleportToExitDoor end }
+local FreezePodOnce = { GetValue = function() return KoalaConfig.FreezePodOnce end }
+local ExitCancel = { GetValue = function() return KoalaConfig.ExitCancel end }
+local WaitForSave = { GetValue = function() return KoalaConfig.WaitForSave end }
+local WaitSaveDelay = { GetValue = function() return KoalaConfig.WaitSaveDelay end }
+local ForcedTogglesDisabled = { GetValue = function() return KoalaConfig.ForcedTogglesDisabled end }
+local FarmTweenSpeed = { GetValue = function() return KoalaConfig.FarmTweenSpeed end }
+local WaitTweenFast = { GetValue = function() return KoalaConfig.WaitTweenFast end }
+local MinimumDuration = { GetValue = function() return KoalaConfig.MinimumDuration end }
+local StudsPerDelay = { GetValue = function() return KoalaConfig.StudsPerDelay end }
+local TriggerPrioritization = { GetValue = function() return KoalaConfig.TriggerPrioritization end }
+local CampTweenAnimOut = { GetValue = function() return KoalaConfig.CampTweenAnimOut end }
+local CampHackOut = { GetValue = function() return KoalaConfig.CampHackOut end }
+local CampFreezePodOut = { GetValue = function() return KoalaConfig.CampFreezePodOut end }
+local CampEscapeOut = { GetValue = function() return KoalaConfig.CampEscapeOut end }
+local TriggerUnCampOut = { GetValue = function() return KoalaConfig.TriggerUnCampOut end }
+local HideBeastNear = { GetValue = function() return KoalaConfig.HideBeastNear end }
+local HideBeastNearDist = { GetValue = function() return KoalaConfig.HideBeastNearDist end }
+local HackBanUnbanTime = { GetValue = function() return KoalaConfig.HackBanUnbanTime end }
+
+-- ==========================================
+-- FUNÇÕES DE INFRAESTRUTURA E SELEÇÃO DE PERSONAGEM
 -- ==========================================
 
+-- Retorna referências do Personagem de forma dinâmica
 local function GetCharacter()
 	local character = LocalPlayer.Character
 	if not character then return nil, nil, nil end
@@ -185,20 +181,27 @@ local function GetCharacter()
 	return character, rootPart, humanoid
 end
 
+-- Verifica se o Personagem especificado existe e é válido
 local function IsThereChar(APlr)
-	local plr = APlr or LocalPlayer
-	if plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character:FindFirstChild("HumanoidRootPart") then
+	local plr = APlr or Players.LocalPlayer
+	if plr.Character and plr.Character:FindFirstChild("Humanoid") then
 		return true
 	end
 	return false
 end
 
+-- Teleporta o jogador de volta ao Spawn Pad do Lobby com segurança
 local function TPPlayerSpawn()
-	if IsThereChar() and Workspace:FindFirstChild("LobbySpawnPad") then
-		LocalPlayer.Character:PivotTo(Workspace.LobbySpawnPad.CFrame * CFrame.new(0, 3, 0))
+	if IsThereChar() then
+		Players.LocalPlayer.Character:PivotTo(Workspace.LobbySpawnPad.CFrame * CFrame.new(0, 3, 0))
 	end
 end
 
+-- ==========================================
+-- COMPONENTES VISUAIS E UTILS DE CORES
+-- ==========================================
+
+-- Gera uma cor exclusiva com base no nome de usuário do jogador
 local function obterCorPeloNome(username)
 	local hash = 0
 	for i = 1, #username do 
@@ -207,13 +210,9 @@ local function obterCorPeloNome(username)
 	return Color3.fromHSV((hash % 100) / 100, 0.9, 1)
 end
 
--- ==========================================
--- SISTEMA DE ESPS E DESTAQUES VISUAIS
--- ==========================================
-
 local function aplicarComputerESP(model)
 	if not model:IsA("Model") or model.Name ~= "ComputerTable" then return end
-	
+
 	local highlight = model:FindFirstChild("ComputerHighlight")
 	if not highlight then
 		highlight = Instance.new("Highlight")
@@ -304,7 +303,22 @@ local function atualizarFreezePodESP()
 	end
 end
 
--- ESP de Saídas e Ventilações do Koala
+Workspace.DescendantAdded:Connect(function(descendant)
+	if ComputerTableESPActive then
+		local nomeFormatado = string.lower(descendant.Name)
+		if (nomeFormatado == "computertable" or nomeFormatado == "computer table") and descendant:IsA("Model") then
+			task.wait(0.2)
+			aplicarComputerESP(descendant)
+		end
+	elseif FreezePodESPActive then
+		local nomeFormatado = string.gsub(string.lower(descendant.Name), " ", "")
+		if nomeFormatado == "freezepod" then
+			task.wait(0.2)
+			aplicarFreezePodESP(descendant)
+		end
+	end
+end)
+
 local ftfVisualsActive = false
 local function applyFTFHighlight(name, color)
 	for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -326,83 +340,6 @@ local function applyFTFHighlight(name, color)
 	end
 end
 
--- ESP de Armários (Locker ESP)
-local lockerESPActive = false
-local function updateLockerESP()
-	for _, locker in ipairs(CollectionService:GetTagged("LOCKER")) do
-		if locker:IsA("Model") then
-			local hl = locker:FindFirstChild("LockerHighlight")
-			if lockerESPActive then
-				if not hl then
-					hl = Instance.new("Highlight")
-					hl.Name = "LockerHighlight"
-					hl.FillColor = Color3.fromRGB(210, 210, 0)
-					hl.FillTransparency = 0.6
-					hl.OutlineColor = Color3.fromRGB(255, 255, 100)
-					hl.OutlineTransparency = 0.2
-					hl.Parent = locker
-				end
-			elseif hl then
-				hl:Destroy()
-			end
-		end
-	end
-end
-
--- ESP de Dutos (VentBlock) com SurfaceGui
-local ventESPActive = false
-local ventHighlights = {}
-local function updateVentESP()
-	for i = #ventHighlights, 1, -1 do
-		local v = ventHighlights[i]
-		if not ventESPActive and v then
-			for _, child in ipairs(v:GetChildren()) do
-				if child:IsA("SurfaceGui") and child.Name == "KHHighlight" then
-					child:Destroy()
-				end
-			end
-			table.remove(ventHighlights, i)
-		end
-	end
-	if ventESPActive and ReplicatedStorage:FindFirstChild("CurrentMap") and ReplicatedStorage.CurrentMap.Value then
-		local debounce = 0
-		for _, v in ipairs(ReplicatedStorage.CurrentMap.Value:GetDescendants()) do
-			debounce = debounce + 1
-			if debounce >= 100 then
-				task.wait()
-				debounce = 0
-			end
-			if v:IsA("BasePart") and string.find(string.lower(v.Name), "ventblock") and not v:FindFirstChild("KHHighlight") then
-				local function NewSUI(Face)
-					local NewHighlight = Instance.new("SurfaceGui")
-					NewHighlight.Name = "KHHighlight"
-					NewHighlight.Adornee = v
-					NewHighlight.AlwaysOnTop = true
-					NewHighlight.Face = Face
-					NewHighlight.Parent = v
-
-					local NewFrame = Instance.new("Frame")
-					NewFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 200)
-					NewFrame.Transparency = 0.6
-					NewFrame.Size = UDim2.new(1, 0, 1, 0)
-					NewFrame.Parent = NewHighlight
-				end
-
-				NewSUI(Enum.NormalId.Front)
-				NewSUI(Enum.NormalId.Back)
-				NewSUI(Enum.NormalId.Left)
-				NewSUI(Enum.NormalId.Right)
-				NewSUI(Enum.NormalId.Top)
-				NewSUI(Enum.NormalId.Bottom)
-
-				table.insert(ventHighlights, v)
-			end
-		end
-	end
-end
-
--- ESP de Itens Comuns
-local itemEspActive = false
 local function aplicarItemESP(item)
 	if not item:IsA("Tool") or not item:FindFirstChild("Handle") then return end
 	local handle = item.Handle
@@ -438,7 +375,10 @@ local function toggleMouseUnlock()
 			mouseUnlockBtn.Text = "Ativado"
 			mouseUnlockBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
 			mouseUnlockBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			local btnStroke = mouseUnlockBtn:FindFirstChildOfClass("UIStroke")
+			if btnStroke then btnStroke.Color = Color3.fromRGB(150, 70, 230) end
 		end
+
 		mouseUnlockConnection = RunService.RenderStepped:Connect(function()
 			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 		end)
@@ -447,7 +387,10 @@ local function toggleMouseUnlock()
 			mouseUnlockBtn.Text = "Desativado"
 			mouseUnlockBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 			mouseUnlockBtn.TextColor3 = Color3.fromRGB(180, 180, 190)
+			local btnStroke = mouseUnlockBtn:FindFirstChildOfClass("UIStroke")
+			if btnStroke then btnStroke.Color = Color3.fromRGB(45, 45, 55) end
 		end
+
 		if mouseUnlockConnection then
 			mouseUnlockConnection:Disconnect()
 			mouseUnlockConnection = nil
@@ -500,7 +443,7 @@ local function toggleFly(btn)
 		flyConnection = RunService.Heartbeat:Connect(function()
 			local character, currentRoot, _ = GetCharacter()
 			if not character or not currentRoot then return end
-			
+
 			local cam = workspace.CurrentCamera
 			local dir = Vector3.zero
 
@@ -532,9 +475,6 @@ end
 
 local function toggleNoclip(btn)
 	NoclipActive = not NoclipActive
-	if PU then
-		PU.NoClip = NoclipActive
-	end
 	if NoclipActive then
 		if btn then
 			btn.Text = "Ativado"
@@ -564,7 +504,7 @@ RunService.Stepped:Connect(function()
 end)
 
 -- ==========================================
--- GESTÃO DO CORPO DE CHAMS E ESP DE JOGADORES
+-- GESTÃO DO CORPO DE CHAMS E RASTREAMENTOS
 -- ==========================================
 
 local function colorirPersonagem(character, targetPlayer)
@@ -592,53 +532,560 @@ local function colorirPersonagem(character, targetPlayer)
 	end
 end
 
-local BeastHighlights = {}
-local function UpdateBeastESP(state)
-	for i = #BeastHighlights, 1, -1 do
-		local v = BeastHighlights[i]
-		if not state or (v and v.Adornee == nil) then
-			if v then v:Destroy() end
-			table.remove(BeastHighlights, i)
-		end
+local function monitorarJogador(targetPlayer)
+	if targetPlayer == LocalPlayer then return end
+	local function noCharacterAdded(character)
+		task.wait(0.1)
+		if ChamsActive then colorirPersonagem(character, targetPlayer) end
+		character.DescendantAdded:Connect(function(desc)
+			if ChamsActive and desc:IsA("BasePart") then
+				task.wait()
+				desc.Color = obterCorPeloNome(targetPlayer.Name)
+				if ChamsNeon then desc.Material = Enum.Material.Neon end
+			end
+		end)
 	end
-	if state then
-		for _, v in ipairs(Players:GetPlayers()) do
-			if v.Character and v.Character:FindFirstChild("BeastPowers") and v ~= LocalPlayer and not v.Character:FindFirstChild("KHBeastHighlight") then
-				local NewHighlight = Instance.new("Highlight")
-				NewHighlight.Name = "KHBeastHighlight"
-				NewHighlight.Adornee = v.Character
-				NewHighlight.Parent = v.Character
-				NewHighlight.FillColor = Color3.fromRGB(200, 50, 50)
-				NewHighlight.OutlineColor = Color3.fromRGB(255, 50, 50)
-				table.insert(BeastHighlights, NewHighlight)
+	if targetPlayer.Character then task.spawn(noCharacterAdded, targetPlayer.Character) end
+	targetPlayer.CharacterAdded:Connect(noCharacterAdded)
+end
+
+local function toggleChams()
+	ChamsActive = not ChamsActive
+	if ChamsActive then
+		chamsBtn.Text = "Ativado"
+		chamsBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		chamsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Chams Ativados.")
+		for _, otherPlayer in ipairs(Players:GetPlayers()) do
+			if otherPlayer.Character then colorirPersonagem(otherPlayer.Character, otherPlayer) end
+		end
+	else
+		chamsBtn.Text = "Desativado"
+		chamsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		chamsBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Chams Desativados.")
+		for _, otherPlayer in ipairs(Players:GetPlayers()) do
+			if otherPlayer.Character then
+				local hl = otherPlayer.Character:FindFirstChild("ColorChamsHighlight")
+				if hl then hl:Destroy() end
 			end
 		end
 	end
 end
 
-local PlrHighlights = {}
-local function UpdatePlrESP(state)
-	for i = #PlrHighlights, 1, -1 do
-		local v = PlrHighlights[i]
-		if not state or (v and v.Adornee == nil) or (v and v.Adornee and v.Adornee.Parent and v.Adornee.Parent:FindFirstChild("BeastPowers")) then
-			if v then v:Destroy() end
-			table.remove(PlrHighlights, i)
+-- Lógica principal do Survivor Farm extraída do Koala Scripts
+local function DoSurvivorFarm()
+	local DoNotTeleport = false
+
+	local function PlayerReady()
+		if not TempPlayerStatsModule or TempPlayerStatsModule.IsBeast.Value or TempPlayerStatsModule.Health.Value <= 0 or not IsThereChar() then
+			return false
+		end
+		return true
+	end
+
+	local function TaskGood()
+		if string.find(string.lower(ReplicatedStorage.GameStatus.Value), "game over") or string.find(string.lower(ReplicatedStorage.GameStatus.Value), "intermission") or not PlayerReady() then
+			return false
+		end
+		return true
+	end
+
+	local function GetMapObjects()
+		local Result = {}
+		Result.Computers = {}
+		Result.FreezePods = {}
+		Result.ExitDoors = {}
+
+		if ReplicatedStorage.CurrentMap.Value then
+			for i, v in pairs(ReplicatedStorage.CurrentMap.Value:GetChildren()) do
+				if v.Name == "ComputerTable" then
+					table.insert(Result.Computers, v)
+				elseif v.Name == "FreezePod" then
+					table.insert(Result.FreezePods, v)
+				elseif v.Name == "ExitDoor" then
+					table.insert(Result.ExitDoors, v)
+				end
+			end
+		end
+
+		return Result
+	end
+	local MapObjects = GetMapObjects()
+
+	local IsFreeing = false
+	local HadSaved = false
+	local GoTween
+	local CheckingPods = false
+
+	local function FreeAllPods(ToGo)
+		if CheckingPods then return end
+		CheckingPods = true
+		for i, v in ipairs(MapObjects.FreezePods) do
+			if TaskGood() and v:FindFirstChild("PodTrigger") and v.PodTrigger.ActionSign.Value == 31 and ((FreezePodOnce:GetValue() == true and HadSaved == false) or FreezePodOnce:GetValue() == false) then
+				IsFreeing = true
+				GoTween(v.PodTrigger, true, TeleportToFreezePod:GetValue())
+				repeat
+					task.wait()
+					if not bnhide and v:FindFirstChild("PodTrigger") then
+						Players.LocalPlayer.Character:PivotTo(v.PodTrigger.CFrame)
+						ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.PodTrigger.Event)
+						ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+					end
+				until not v:FindFirstChild("PodTrigger") or v.PodTrigger.ActionSign.Value ~= 31 or bnhideelapse >= CampFreezePodOut:GetValue()
+				if bnhideelapse >= CampFreezePodOut:GetValue() then
+					lpos = Players.LocalPlayer.Character:GetPivot()
+				end
+				if v:FindFirstChild("PodTrigger") and v.PodTrigger.ActionSign.Value ~= 31 then
+					HadSaved = true
+				end
+				if ToGo then
+					GoTween(ToGo, true, TeleportToFreezePod:GetValue())
+				end
+				IsFreeing = false
+			end
+		end
+		CheckingPods = false
+	end
+
+	GoTween = function(Part, IsPod, TeleportInstead, TeleportDelay)
+		if not TeleportInstead then
+			local Distance = (Players.LocalPlayer.Character.HumanoidRootPart.Position - Part.Position).Magnitude
+			local NewTween = TweenService:Create(
+				Players.LocalPlayer.Character.HumanoidRootPart,
+				TweenInfo.new(Distance / FarmTweenSpeed:GetValue(), Enum.EasingStyle.Linear),
+				{ CFrame = Part.CFrame }
+			)
+			NewTween:Play()
+
+			repeat
+				task.wait()
+				if bnhide then
+					NewTween:Pause()
+					lpos = Players.LocalPlayer.Character.HumanoidRootPart.CFrame
+				elseif NewTween.PlaybackState == Enum.PlaybackState.Paused then
+					NewTween:Play()
+				end
+
+				if bnhideelapse >= CampTweenAnimOut:GetValue() then
+					lpos = Part.CFrame
+					bnhideelapse = 0
+					NewTween:Cancel()
+				elseif not TaskGood() then
+					NewTween:Cancel()
+				elseif not IsFreeing and not IsPod and not CheckingPods then
+					coroutine.wrap(function()
+						FreeAllPods(Part)
+					end)()
+				elseif IsFreeing and not IsPod then
+					NewTween:Cancel()
+				end
+			until NewTween.PlaybackState == Enum.PlaybackState.Completed or NewTween.PlaybackState == Enum.PlaybackState.Cancelled
+		end
+		if TeleportDelay and TeleportInstead then
+			task.wait(TeleportDelay)
+		end
+		if IsThereChar() then
+			Players.LocalPlayer.Character:PivotTo(Part.CFrame)
 		end
 	end
-	if state then
-		for _, v in ipairs(Players:GetPlayers()) do
-			if v.Character and not v.Character:FindFirstChild("BeastPowers") and v ~= LocalPlayer and not v.Character:FindFirstChild("KHPlayerHighlight") then
-				local NewHighlight = Instance.new("Highlight")
-				NewHighlight.Name = "KHPlayerHighlight"
-				NewHighlight.Adornee = v.Character
-				NewHighlight.FillColor = Color3.fromRGB(0, 230, 0)
-				NewHighlight.OutlineColor = Color3.fromRGB(0, 255, 0)
-				NewHighlight.Parent = v.Character
-				table.insert(PlrHighlights, NewHighlight)
+
+	local OnComputer = false
+	local ChosenComputer = nil
+	local ComputerBanList = {}
+	local CurrentComputer = nil
+	local FirstPC = true
+	local LastPC = nil
+
+	local function GetComputer(Computer)
+		if TaskGood() and Computer.Screen.BrickColor ~= BrickColor.new("Dark green") and not OnComputer then
+			OnComputer = true
+
+			local Prioritize = TriggerPrioritization:GetValue()
+			local Triggers = nil
+
+			if Prioritize == 1 then
+				Triggers = {
+					Computer:FindFirstChild("ComputerTrigger1"),
+					Computer:FindFirstChild("ComputerTrigger2"),
+					Computer:FindFirstChild("ComputerTrigger3"),
+				}
+			elseif Prioritize == 2 then
+				Triggers = {
+					Computer:FindFirstChild("ComputerTrigger2"),
+					Computer:FindFirstChild("ComputerTrigger3"),
+					Computer:FindFirstChild("ComputerTrigger1"),
+				}
+			else
+				Triggers = {
+					Computer:FindFirstChild("ComputerTrigger3"),
+					Computer:FindFirstChild("ComputerTrigger1"),
+					Computer:FindFirstChild("ComputerTrigger2"),
+				}
+			end
+
+			local hadteleported = false
+
+			for i, v in ipairs(Triggers) do
+				if v and TaskGood() and v.ActionSign.Value == 20 and Computer.Screen.BrickColor ~= BrickColor.new("Dark green") and ChosenComputer == Computer then
+					local Distance = (Players.LocalPlayer.Character.HumanoidRootPart.Position - v.Position).Magnitude
+
+					if (Distance / FarmTweenSpeed:GetValue() < WaitTweenFast:GetValue()) and not FirstPC and not TeleportInsteadTweenPCFarm:GetValue() and LastPC ~= Computer then
+						local Time = Distance / FarmTweenSpeed:GetValue()
+						task.wait(WaitTweenFast:GetValue() - Time)
+					end
+
+					repeat
+						task.wait()
+					until not TaskGood() or bnhide == false or bnhideelapse >= CampHackOut:GetValue()
+					if bnhideelapse >= CampHackOut:GetValue() then
+						lpos = Players.LocalPlayer.Character:GetPivot()
+					end
+
+					if hadteleported or FirstPC or LastPC == Computer then
+						GoTween(v, nil, TeleportInsteadTweenPCFarm:GetValue())
+					else
+						local GotDelay = WaitTweenFast:GetValue()
+						if UseMinimalTeleport:GetValue() then
+							local NewDelay = Distance / StudsPerDelay:GetValue()
+							GotDelay = math.clamp(NewDelay, math.min(MinimumDuration:GetValue(), WaitTweenFast:GetValue()), WaitTweenFast:GetValue())
+						end
+						GoTween(v, nil, TeleportInsteadTweenPCFarm:GetValue(), GotDelay)
+					end
+					hadteleported = true
+					FirstPC = false
+					LastPC = Computer
+
+					if Computer.Screen.BrickColor == BrickColor.new("Dark green") then CurrentComputer = nil; OnComputer = false; return end
+					if not TaskGood() then CurrentComputer = nil; OnComputer = false; return end
+					if v.ActionSign.Value ~= 20 or (ChosenComputer ~= Computer and ChosenComputer ~= nil) then continue end
+
+					local Tries = 0
+					repeat
+						task.wait()
+						FreeAllPods(v)
+						if TaskGood() and not bnhide and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" then
+							Tries += 1
+							if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
+								Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = false
+							end
+							Players.LocalPlayer.Character:PivotTo(v.CFrame)
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+							task.wait(0.5)
+							if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
+								Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = true
+							end
+						elseif TaskGood() and not bnhide and not IsFreeing then
+							CurrentComputer = Computer
+							Tries = 0
+							if AutoHideHack:GetValue() then
+								Players.LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
+								ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
+								ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+							end
+						end
+						if bnhideelapse >= CampHackOut:GetValue() and not IsFreeing then
+							ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
+							lpos = Players.LocalPlayer.Character:GetPivot()
+							OnComputer = false
+							CurrentComputer = nil
+							bnhideelapse = 0
+							return
+						end
+
+						if Tries >= 5 and TaskGood() and not bnhide and not IsFreeing then
+							CurrentComputer = nil
+							OnComputer = false
+							local TriggerGood = false
+							for i2, v2 in ipairs(Triggers) do
+								if v2 and v2.ActionSign.Value == 20 then
+									TriggerGood = true
+								end
+							end
+							if not TriggerGood then
+								ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
+							end
+							return
+						end
+					until not TaskGood() or Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil)
+					if TaskGood() and TeleportInsteadTweenPCFarm:GetValue() then
+						ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", false, v.Event)
+						ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", false)
+						Players.LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
+					end
+					if Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil) then
+						CurrentComputer = nil
+						OnComputer = false
+						return
+					end
+				end
+			end
+
+			CurrentComputer = nil
+			OnComputer = false
+		end
+	end
+
+	local function Run()
+		local CancelComputers = false
+		local LeastTriggers = 4
+		local Closest = math.huge
+		local ComputersLeft = 0
+
+		if WaitForSave:GetValue() then
+			repeat task.wait() until ReplicatedStorage.IsGameActive.Value
+			task.wait(WaitSaveDelay:GetValue())
+			repeat
+				task.wait(WaitSaveDelay:GetValue())
+				FreeAllPods()
+			until not TaskGood() or HadSaved
+		end
+
+		coroutine.wrap(function()
+			while TaskGood() do
+				task.wait()
+				ComputersLeft = 0
+				LeastTriggers = 4
+				Closest = math.huge
+
+				if ChosenComputer and ChosenComputer.Screen.BrickColor == BrickColor.new("Dark green") then
+					ChosenComputer = nil
+				end
+
+				for i, v in ipairs(MapObjects.Computers) do
+					if v.Screen.BrickColor ~= BrickColor.new("Dark green") then
+						ComputersLeft += 1
+					end
+
+					if ChosenComputer and KeepComputer:GetValue() then
+						continue
+					end
+
+					local UseTrigger = v:FindFirstChild("ComputerTrigger3")
+					local FoundV = nil
+					local FoundI = nil
+
+					for i2, v2 in pairs(ComputerBanList) do
+						if UseTrigger and Beast and v2 == v and DateTime.now().UnixTimestampMillis - i2 > HackBanUnbanTime:GetValue() and (UseTrigger.Position - Beast.Character.HumanoidRootPart.Position).Magnitude > HideBeastNearDist:GetValue() + 10 then
+							ComputerBanList[i2] = nil
+						elseif v2 == v then
+							FoundV = v2
+							FoundI = i2
+						end
+					end
+
+					if v.Screen.BrickColor ~= BrickColor.new("Dark green") and not FoundV then
+						local Triggers = {
+							v:FindFirstChild("ComputerTrigger3"),
+							v:FindFirstChild("ComputerTrigger2"),
+							v:FindFirstChild("ComputerTrigger1"),
+						}
+
+						local Distance = (Triggers[1].Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+						local AmtTriggers = 3
+
+						for i2, v2 in ipairs(Triggers) do
+							if v2 and v2.ActionSign.Value ~= 20 then
+								AmtTriggers -= 1
+							end
+						end
+
+						if v == CurrentComputer and AmtTriggers and AmtTriggers >= 1 then
+							AmtTriggers += 1
+						elseif AmtTriggers < 1 then
+							AmtTriggers = -1
+						end
+
+						if ((AmtTriggers >= 1 or AmtTriggers == -1) and AmtTriggers <= LeastTriggers) then
+							if AmtTriggers == LeastTriggers and Distance > Closest then
+								continue
+							end
+
+							ChosenComputer = v
+							LeastTriggers = AmtTriggers
+							Closest = Distance
+						end
+					end
+				end
+			end
+		end)()
+
+		repeat
+			task.wait(0.5)
+			if ChosenComputer and not OnComputer then
+				GetComputer(ChosenComputer)
+				if ComputersLeft <= 1 then
+					CancelComputers = true
+				end
+			elseif ComputersLeft < 1 then
+				CancelComputers = true
+			end
+		until not TaskGood() or CancelComputers
+
+		if not TaskGood() or ExitCancel:GetValue() then
+			return
+		end
+
+		repeat
+			task.wait()
+			for i, v in ipairs(MapObjects.ExitDoors) do
+				if not TaskGood() then continue end
+
+				repeat task.wait() until not TaskGood() or bnhide == false or bnhideelapse >= CampEscapeOut:GetValue()
+
+				if v:FindFirstChild("ExitDoorTrigger") then
+					GoTween(v.ExitDoorTrigger, nil, TeleportToExitDoor:GetValue())
+					repeat
+						task.wait()
+						if v:FindFirstChild("ExitDoorTrigger") and v.ExitDoorTrigger.ActionSign.Value ~= 0 and not bnhide then
+							Players.LocalPlayer.Character:PivotTo(v.ExitDoorTrigger.CFrame * CFrame.new(0, v.ExitDoorTrigger.Size.Y / 2, 0))
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.ExitDoorTrigger.Event)
+							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+							task.wait(0.5)
+						end
+					until not TaskGood() or not v:FindFirstChild("ExitDoorTrigger") or bnhideelapse >= CampEscapeOut:GetValue()
+
+					if bnhideelapse >= CampEscapeOut:GetValue() then
+						lpos = Players.LocalPlayer.Character:GetPivot()
+						bnhideelapse = 0
+						continue
+					end
+				end
+
+				if TaskGood() then
+					task.wait(0.5)
+					GoTween(v.ExitArea, nil, TeleportToExitDoor:GetValue())
+				end
+			end
+		until not TaskGood()
+	end
+
+	local NewFarmTask = coroutine.create(function()
+		if PlayerReady() and not onsurvivorfarm then
+			onsurvivorfarm = true
+			local NewAttachment
+			if IsThereChar() then
+				NewAttachment = Instance.new("Attachment")
+				NewAttachment.Name = "KSAttachmentZVel"
+				NewAttachment.Parent = Players.LocalPlayer.Character.HumanoidRootPart
+
+				local NewLinearVelocity = Instance.new("LinearVelocity")
+				NewLinearVelocity.Attachment0 = NewAttachment
+				NewLinearVelocity.MaxForce = math.huge
+				NewLinearVelocity.Parent = NewAttachment
+
+				local NewAngularVelocity = Instance.new("AngularVelocity")
+				NewAngularVelocity.Attachment0 = NewAttachment
+				NewAngularVelocity.MaxTorque = math.huge
+				NewAngularVelocity.Parent = NewAttachment
+			end
+
+			pcall(Run)
+
+			if not DoNotTeleport then
+				task.wait(1)
+				TPPlayerSpawn()
+			end
+			if NewAttachment then
+				NewAttachment:Destroy()
+			end
+			onsurvivorfarm = false
+		end
+	end)
+	coroutine.resume(NewFarmTask)
+	table.insert(farmtasks, NewFarmTask)
+end
+
+-- Loop contínuo em segundo plano para manter as referências e evasões ativas
+task.spawn(function()
+	while true do
+		local dt = task.wait()
+
+		-- Mantém a referência do TempPlayerStatsModule do jogador
+		if IsThereChar() then
+			TempPlayerStatsModule = Players.LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+
+			-- Evasão de queda no vácuo
+			if Players.LocalPlayer.Character.HumanoidRootPart.Position.Y < -3000 then
+				TPPlayerSpawn()
+			end
+		end
+
+		-- Sincroniza configurações forçadas do Auto-Farm do Koala
+		if onsurvivorfarm and not ForcedTogglesDisabled:GetValue() then
+			if ExitCancel:GetValue() then
+				KoalaConfig.HideBeastNear = false
+			else
+				KoalaConfig.HideBeastNear = true
+			end
+		end
+
+		-- Evasão de Proximidade da Fera
+		if HideBeastNear:GetValue() and IsThereChar() and Beast ~= nil and IsThereChar(Beast) and TempPlayerStatsModule and TempPlayerStatsModule.IsBeast.Value == false then
+			if lpos and ((Beast.Character.HumanoidRootPart.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < HideBeastNearDist:GetValue() or TempPlayerStatsModule.Ragdoll.Value == true or bnhide == true) then
+				Players.LocalPlayer.Character:PivotTo(Beast.Character:GetPivot() * CFrame.new(0, 25 + HideBeastNearDist:GetValue(), 0))
+				bnhide = true
+			elseif bnhide == false and clpos == false then
+				lpos = Players.LocalPlayer.Character:GetPivot()
+			end
+
+			if lpos and bnhide == true and (Beast.Character.HumanoidRootPart.Position - lpos.Position).Magnitude > HideBeastNearDist:GetValue() + 10 and TempPlayerStatsModule.Ragdoll.Value == false then
+				Players.LocalPlayer.Character:PivotTo(lpos)
+				bnhide = false
+			end
+		end
+
+		if bnhide then
+			bnhideelapse = bnhideelapse + dt
+			noelepse = 0
+		else
+			noelepse = noelepse + dt
+			if noelepse > TriggerUnCampOut:GetValue() then
+				bnhideelapse = 0
 			end
 		end
 	end
-end
+end)
+
+-- Monitor do estado de jogo para detecção da Fera e controle de fluxo do Auto-Farm
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if ReplicatedStorage:FindFirstChild("CurrentMap") and ReplicatedStorage.CurrentMap.Value then
+			local mapValue = ReplicatedStorage.CurrentMap.Value
+			local currentCompCount = 0
+			for _, child in ipairs(mapValue:GetChildren()) do
+				if child.Name == "ComputerTable" then
+					currentCompCount = currentCompCount + 1
+				end
+			end
+
+			if currentCompCount ~= Comp then
+				Comp = currentCompCount
+				if currentCompCount > 0 then
+					-- Nova partida iniciou
+					task.wait(3)
+					for _, p in ipairs(Players:GetPlayers()) do
+						if p:FindFirstChild("TempPlayerStatsModule") and p.TempPlayerStatsModule.IsBeast.Value then
+							Beast = p
+						end
+					end
+					if KoalaConfig.ComputerAutoFarm then
+						DoSurvivorFarm()
+					end
+				else
+					-- Retornou para o lobby/partida acabou
+					Beast = nil
+					for _, t in ipairs(farmtasks) do
+						pcall(function() coroutine.close(t) end)
+					end
+					onsurvivorfarm = false
+				end
+			end
+		end
+	end
+end)
 
 -- ==========================================
 -- CRIAÇÃO DA INTERFACE VISUAL (GUI PRINCIPAL)
@@ -650,8 +1097,8 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = PlayerGui
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 580, 0, 390)
-mainFrame.Position = UDim2.new(0.5, -290, 0.5, -195)
+mainFrame.Size = UDim2.new(0, 560, 0, 360)
+mainFrame.Position = UDim2.new(0.5, -280, 0.5, -180)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -692,16 +1139,16 @@ do
 	title.Size = UDim2.new(1, -100, 1, 0)
 	title.Position = UDim2.new(0, 15, 0, 0)
 	title.BackgroundTransparency = 1
-	title.Text = "🕷️ SPIDER & KOALA HUB"
+	title.Text = "🕷️ SPIDER HUB"
 	title.TextColor3 = Color3.fromRGB(240, 240, 250)
 	title.Font = Enum.Font.GothamBold
-	title.TextSize = 13
+	title.TextSize = 14
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Parent = topBar
 end
 
 local sidebar = Instance.new("Frame")
-sidebar.Size = UDim2.new(0, 150, 1, -40)
+sidebar.Size = UDim2.new(0, 140, 1, -40)
 sidebar.Position = UDim2.new(0, 0, 0, 40)
 sidebar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 sidebar.BorderSizePixel = 0
@@ -713,18 +1160,18 @@ do
 	sidebarCorner.Parent = sidebar
 
 	local sidebarLayout = Instance.new("UIListLayout")
-	sidebarLayout.Padding = UDim.new(0, 4)
+	sidebarLayout.Padding = UDim.new(0, 5)
 	sidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	sidebarLayout.Parent = sidebar
 
 	local sidebarPadding = Instance.new("UIPadding")
-	sidebarPadding.PaddingTop = UDim.new(0, 8)
+	sidebarPadding.PaddingTop = UDim.new(0, 10)
 	sidebarPadding.Parent = sidebar
 end
 
 local contentContainer = Instance.new("Frame")
-contentContainer.Size = UDim2.new(1, -165, 1, -55)
-contentContainer.Position = UDim2.new(0, 155, 0, 45)
+contentContainer.Size = UDim2.new(1, -150, 1, -50)
+contentContainer.Position = UDim2.new(0, 145, 0, 45)
 contentContainer.BackgroundTransparency = 1
 contentContainer.Parent = mainFrame
 
@@ -732,7 +1179,7 @@ local statusBar = Instance.new("TextLabel")
 statusBar.Size = UDim2.new(1, -10, 0, 20)
 statusBar.Position = UDim2.new(0, 5, 1, -25)
 statusBar.BackgroundTransparency = 1
-statusBar.Text = "Pronto."
+statusBar.Text = "Sistema inicializado com sucesso."
 statusBar.TextColor3 = Color3.fromRGB(150, 150, 160)
 statusBar.Font = Enum.Font.SourceSans
 statusBar.TextSize = 13
@@ -749,7 +1196,7 @@ local function setStatus(msg)
 	end)
 end
 
--- Botão Minimizar
+-- Minimizar Painel
 local minBtn = Instance.new("TextButton")
 minBtn.Name = "MinimizeButton"
 minBtn.Size = UDim2.new(0, 26, 0, 26)
@@ -770,8 +1217,8 @@ minCorner.CornerRadius = UDim.new(0, 6)
 minCorner.Parent = minBtn
 
 local isMinimized = false
-local originalSize = UDim2.new(0, 580, 0, 390)
-local minimizedSize = UDim2.new(0, 580, 0, 40)
+local originalSize = UDim2.new(0, 560, 0, 360)
+local minimizedSize = UDim2.new(0, 560, 0, 40)
 
 minBtn.MouseEnter:Connect(function()
 	TweenService:Create(minBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(130, 50, 200)}):Play()
@@ -783,16 +1230,23 @@ end)
 
 minBtn.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
+
 	if isMinimized then
 		minBtn.Text = "+"
 		sidebar.Visible = false
 		contentContainer.Visible = false
 		statusBar.Visible = false
-		TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = minimizedSize}):Play()
+
+		TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = minimizedSize
+		}):Play()
 	else
 		minBtn.Text = "-"
-		local expandTween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = originalSize})
+		local expandTween = TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = originalSize
+		})
 		expandTween:Play()
+
 		expandTween.Completed:Connect(function()
 			if not isMinimized then
 				sidebar.Visible = true
@@ -806,10 +1260,9 @@ end)
 -- ==========================================
 -- GESTÃO DE ABAS E CONFIGURAÇÕES DE INTERFACE
 -- ==========================================
-
 local function createTab(tabName)
 	local page = Instance.new("Frame")
-	page.Size = UDim2.new(1, 0, 1, -10)
+	page.Size = UDim2.new(1, 0, 1, -20)
 	page.BackgroundTransparency = 1
 	page.Visible = false
 	page.Parent = contentContainer
@@ -817,28 +1270,32 @@ local function createTab(tabName)
 	tabs[tabName] = page
 
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0.92, 0, 0, 28)
+	btn.Size = UDim2.new(0.9, 0, 0, 32)
 	btn.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
 	btn.BackgroundTransparency = 1
-	btn.Text = "  " .. tabName
+	btn.Text = "   " .. tabName
 	btn.TextColor3 = Color3.fromRGB(160, 160, 170)
 	btn.Font = Enum.Font.GothamMedium
-	btn.TextSize = 10.5
+	btn.TextSize = 11
 	btn.TextXAlignment = Enum.TextXAlignment.Left
 	btn.BorderSizePixel = 0
 	btn.Parent = sidebar
 
 	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 5)
+	btnCorner.CornerRadius = UDim.new(0, 6)
 	btnCorner.Parent = btn
 
 	local activeIndicator = Instance.new("Frame")
 	activeIndicator.Size = UDim2.new(0, 3, 0.5, 0)
-	activeIndicator.Position = UDim2.new(0, 3, 0.25, 0)
+	activeIndicator.Position = UDim2.new(0, 4, 0.25, 0)
 	activeIndicator.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
 	activeIndicator.BorderSizePixel = 0
 	activeIndicator.BackgroundTransparency = 1
 	activeIndicator.Parent = btn
+
+	local indicatorCorner = Instance.new("UICorner")
+	indicatorCorner.CornerRadius = UDim.new(0, 2)
+	indicatorCorner.Parent = activeIndicator
 
 	tabButtons[tabName] = btn
 
@@ -863,10 +1320,14 @@ local function createTab(tabName)
 			p.Visible = isTarget
 			if isTarget then
 				TweenService:Create(currentBtn, TweenInfo.new(0.1), {BackgroundTransparency = 0.88, BackgroundColor3 = Color3.fromRGB(130, 50, 200), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-				if indicator then TweenService:Create(indicator, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play() end
+				if indicator then
+					TweenService:Create(indicator, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play()
+				end
 			else
 				TweenService:Create(currentBtn, TweenInfo.new(0.1), {BackgroundTransparency = 1, BackgroundColor3 = Color3.fromRGB(24, 24, 30), TextColor3 = Color3.fromRGB(160, 160, 170)}):Play()
-				if indicator then TweenService:Create(indicator, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play() end
+				if indicator then
+					TweenService:Create(indicator, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
+				end
 			end
 		end
 	end)
@@ -874,42 +1335,48 @@ local function createTab(tabName)
 	return page
 end
 
--- Helper para gerar opções liga/desliga estruturadas
+-- Função Auxiliar para Criar Cards de Configurações
 local function criarFrameConfig(titulo, textoBotao, paginaAlvo, callback)
 	local f = Instance.new("Frame")
-	f.Size = UDim2.new(1, -10, 0, 36)
+	f.Size = UDim2.new(1, -10, 0, 42)
 	f.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 	f.BorderSizePixel = 0
 	f.Parent = paginaAlvo
 
 	local fCorner = Instance.new("UICorner")
-	fCorner.CornerRadius = UDim.new(0, 5)
+	fCorner.CornerRadius = UDim.new(0, 6)
 	fCorner.Parent = f
 
+	local fStroke = Instance.new("UIStroke")
+	fStroke.Color = Color3.fromRGB(32, 32, 40)
+	fStroke.Thickness = 1
+	fStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	fStroke.Parent = f
+
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0.65, 0, 1, 0)
-	label.Position = UDim2.new(0, 10, 0, 0)
+	label.Size = UDim2.new(0.6, 0, 1, 0)
+	label.Position = UDim2.new(0, 12, 0, 0)
 	label.BackgroundTransparency = 1
 	label.Text = titulo
 	label.TextColor3 = Color3.fromRGB(235, 235, 240)
 	label.Font = Enum.Font.GothamMedium
-	label.TextSize = 10
+	label.TextSize = 11
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Parent = f
 
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0.24, 0, 0.65, 0)
-	btn.Position = UDim2.new(0.73, 0, 0.175, 0)
+	btn.Size = UDim2.new(0.26, 0, 0.65, 0)
+	btn.Position = UDim2.new(0.7, 0, 0.175, 0)
 	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 	btn.Text = textoBotao
 	btn.TextColor3 = Color3.fromRGB(180, 180, 190)
 	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 9
+	btn.TextSize = 10
 	btn.BorderSizePixel = 0
 	btn.Parent = f
 
 	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 4)
+	btnCorner.CornerRadius = UDim.new(0, 5)
 	btnCorner.Parent = btn
 
 	local btnStroke = Instance.new("UIStroke")
@@ -923,13 +1390,15 @@ local function criarFrameConfig(titulo, textoBotao, paginaAlvo, callback)
 	end)
 
 	btn.MouseLeave:Connect(function()
-		local isEnabled = (btn.Text == "Ativado")
-		local targetBg = isEnabled and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-		local targetTx = isEnabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 190)
-		local targetStroke = isEnabled and Color3.fromRGB(150, 70, 230) or Color3.fromRGB(45, 45, 55)
+		if btn then
+			local isEnabled = (btn.Text == "Ativado")
+			local targetBg = isEnabled and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+			local targetTx = isEnabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 190)
+			local targetStroke = isEnabled and Color3.fromRGB(150, 70, 230) or Color3.fromRGB(45, 45, 55)
 
-		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = targetBg, TextColor3 = targetTx}):Play()
-		TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = targetStroke}):Play()
+			TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = targetBg, TextColor3 = targetTx}):Play()
+			TweenService:Create(btnStroke, TweenInfo.new(0.1), {Color = targetStroke}):Play()
+		end
 	end)
 
 	btn.MouseButton1Click:Connect(function()
@@ -939,66 +1408,18 @@ local function criarFrameConfig(titulo, textoBotao, paginaAlvo, callback)
 	return f
 end
 
--- Helper para Inputs Numéricos
-local function criarFrameInput(titulo, valorInicial, paginaAlvo, callback)
-	local f = Instance.new("Frame")
-	f.Size = UDim2.new(1, -10, 0, 36)
-	f.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
-	f.BorderSizePixel = 0
-	f.Parent = paginaAlvo
-
-	local fCorner = Instance.new("UICorner")
-	fCorner.CornerRadius = UDim.new(0, 5)
-	fCorner.Parent = f
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0.65, 0, 1, 0)
-	label.Position = UDim2.new(0, 10, 0, 0)
-	label.BackgroundTransparency = 1
-	label.Text = titulo
-	label.TextColor3 = Color3.fromRGB(235, 235, 240)
-	label.Font = Enum.Font.GothamMedium
-	label.TextSize = 10
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = f
-
-	local input = Instance.new("TextBox")
-	input.Size = UDim2.new(0.24, 0, 0.65, 0)
-	input.Position = UDim2.new(0.73, 0, 0.175, 0)
-	input.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
-	input.TextColor3 = Color3.fromRGB(255, 255, 255)
-	input.Text = tostring(valorInicial)
-	input.Font = Enum.Font.GothamBold
-	input.TextSize = 10
-	input.BorderSizePixel = 0
-	input.Parent = f
-
-	local inputCorner = Instance.new("UICorner")
-	inputCorner.CornerRadius = UDim.new(0, 4)
-	inputCorner.Parent = input
-
-	input.FocusLost:Connect(function(enterPressed)
-		local val = tonumber(input.Text)
-		if val then
-			callback(val)
-		else
-			input.Text = tostring(valorInicial)
-		end
-	end)
-
-	return f
-end
-
 -- Instanciação de Abas
 local homePage = createTab("Início")
 local movePage = createTab("Movimentação")
 local playersPage = createTab("Jogadores")
-local ftfPage = createTab("Auto Farm")
+local itemsPage = createTab("Itens")
 local visualPage = createTab("Visual")
-local trollPage = createTab("Troll & Sounds")
+local ftfPage = createTab("Flee The Facility")
 local utilsPage = createTab("Utilitários")
+local combatPage = createTab("Guerra de Torres")
 local inspectorPage = createTab("Inspetor")
 
+-- Ativa primeira aba por padrão
 tabs["Início"].Visible = true
 tabButtons["Início"].BackgroundColor3 = Color3.fromRGB(130, 50, 200)
 tabButtons["Início"].TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1008,23 +1429,23 @@ tabButtons["Início"].TextColor3 = Color3.fromRGB(255, 255, 255)
 -- ==========================================
 do
 	local welcomeLabel = Instance.new("TextLabel")
-	welcomeLabel.Size = UDim2.new(1, 0, 0, 30)
+	welcomeLabel.Size = UDim2.new(1, 0, 0, 40)
 	welcomeLabel.BackgroundTransparency = 1
-	welcomeLabel.Text = "Painel Integrado Spider Hub & Koala Scripts"
+	welcomeLabel.Text = "Bem-vindo ao Spider Hub, " .. LocalPlayer.DisplayName .. "!"
 	welcomeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	welcomeLabel.Font = Enum.Font.GothamBold
-	welcomeLabel.TextSize = 13
+	welcomeLabel.TextSize = 14
 	welcomeLabel.TextXAlignment = Enum.TextXAlignment.Left
 	welcomeLabel.Parent = homePage
 
 	local descLabel = Instance.new("TextLabel")
-	descLabel.Size = UDim2.new(1, 0, 1, -40)
-	descLabel.Position = UDim2.new(0, 0, 0, 35)
+	descLabel.Size = UDim2.new(1, 0, 0, 120)
+	descLabel.Position = UDim2.new(0, 0, 0, 40)
 	descLabel.BackgroundTransparency = 1
-	descLabel.Text = "Atalhos Rápidos Gerais:\n[P] Ativar/Desativar Voo (Fly)\n[N] Ativar/Desativar Noclip\n[Alt] Soltar Cursor / Fechar Painel\n[F4] Modo Inspetor de Blocos\n[Ctrl + 2] Ativar Aceleração de Hack"
+	descLabel.Text = "Este hub unifica suas ferramentas de movimentação, trapaça visual e teletransporte em um painel responsivo.\n\nAtalhos Rápidos:\n[P] Ativar/Desativar Voo (Fly)\n[N] Ativar/Desativar Noclip\n[Alt] Soltar Cursor"
 	descLabel.TextColor3 = Color3.fromRGB(170, 170, 180)
 	descLabel.Font = Enum.Font.Gotham
-	descLabel.TextSize = 11
+	descLabel.TextSize = 12
 	descLabel.TextWrapped = true
 	descLabel.TextXAlignment = Enum.TextXAlignment.Left
 	descLabel.TextYAlignment = Enum.TextYAlignment.Top
@@ -1043,88 +1464,163 @@ moveScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
 moveScroll.Parent = movePage
 
 local moveLayout = Instance.new("UIListLayout")
-moveLayout.Padding = UDim.new(0, 6)
+moveLayout.Padding = UDim.new(0, 10)
 moveLayout.Parent = moveScroll
 
-criarFrameConfig("Habilitar Vôo (Fly) [P]", "Desativado", moveScroll, function(btn)
-	toggleFly(btn)
+local flyFrame = Instance.new("Frame")
+flyFrame.Size = UDim2.new(1, -10, 0, 45)
+flyFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+flyFrame.BorderSizePixel = 0
+flyFrame.Parent = moveScroll
+
+local flyCorner = Instance.new("UICorner")
+flyCorner.CornerRadius = UDim.new(0, 6)
+flyCorner.Parent = flyFrame
+
+local flyLabel = Instance.new("TextLabel")
+flyLabel.Size = UDim2.new(0.6, 0, 1, 0)
+flyLabel.Position = UDim2.new(0, 12, 0, 0)
+flyLabel.BackgroundTransparency = 1
+flyLabel.Text = "Habilitar Vôo (Fly) [P]"
+flyLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+flyLabel.Font = Enum.Font.GothamBold
+flyLabel.TextSize = 12
+flyLabel.TextXAlignment = Enum.TextXAlignment.Left
+flyLabel.Parent = flyFrame
+
+local flyBtn = Instance.new("TextButton")
+flyBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
+flyBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
+flyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+flyBtn.Text = "Desativado"
+flyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+flyBtn.Font = Enum.Font.GothamMedium
+flyBtn.TextSize = 11
+flyBtn.BorderSizePixel = 0
+flyBtn.Parent = flyFrame
+
+local flyBtnCorner = Instance.new("UICorner")
+flyBtnCorner.CornerRadius = UDim.new(0, 5)
+flyBtnCorner.Parent = flyBtn
+
+flyBtn.MouseButton1Click:Connect(function()
+	toggleFly(flyBtn)
 end)
 
-criarFrameInput("Velocidade do Vôo:", FlySpeed, moveScroll, function(val)
-	FlySpeed = val
+-- Controle de Velocidade
+local speedFrame = Instance.new("Frame")
+speedFrame.Size = UDim2.new(1, -10, 0, 45)
+speedFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+speedFrame.BorderSizePixel = 0
+speedFrame.Parent = moveScroll
+
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0, 6)
+speedCorner.Parent = speedFrame
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
+speedLabel.Position = UDim2.new(0, 12, 0, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "Velocidade do Vôo:"
+speedLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+speedLabel.Font = Enum.Font.GothamBold
+speedLabel.TextSize = 12
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = speedFrame
+
+local speedInput = Instance.new("TextBox")
+speedInput.Size = UDim2.new(0.3, 0, 0.7, 0)
+speedInput.Position = UDim2.new(0.65, 0, 0.15, 0)
+speedInput.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
+speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedInput.Text = tostring(FlySpeed)
+speedInput.Font = Enum.Font.GothamBold
+speedInput.TextSize = 12
+speedInput.BorderSizePixel = 0
+speedInput.Parent = speedFrame
+
+local speedInputCorner = Instance.new("UICorner")
+speedInputCorner.CornerRadius = UDim.new(0, 5)
+speedInputCorner.Parent = speedInput
+
+speedInput:GetPropertyChangedSignal("Text"):Connect(function()
+	local val = tonumber(speedInput.Text)
+	if val then FlySpeed = val end
 end)
 
-criarFrameConfig("Ativar Noclip [N]", "Desativado", moveScroll, function(btn)
-	toggleNoclip(btn)
-end)
+-- Noclip Toggle
+local noclipFrame = Instance.new("Frame")
+noclipFrame.Size = UDim2.new(1, -10, 0, 45)
+noclipFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+noclipFrame.BorderSizePixel = 0
+noclipFrame.Parent = moveScroll
 
-criarFrameConfig("Pulo Infinito", "Desativado", moveScroll, function(btn)
-	InfiniteJumpActive = not InfiniteJumpActive
-	if InfiniteJumpActive then
-		btn.Text = "Ativado"
-		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		jumpConnection = UserInputService.JumpRequest:Connect(function()
-			local _, _, humanoid = GetCharacter()
-			if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
-		end)
-	else
-		btn.Text = "Desativado"
-		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-		if jumpConnection then
-			jumpConnection:Disconnect()
-			jumpConnection = nil
-		end
-	end
-end)
+local noclipCorner = Instance.new("UICorner")
+noclipCorner.CornerRadius = UDim.new(0, 6)
+noclipCorner.Parent = noclipFrame
 
-local originalGravity = Workspace.Gravity
-criarFrameConfig("Gravidade Baixa (Lua)", "Desativado", moveScroll, function(btn)
-	if Workspace.Gravity == originalGravity then
-		Workspace.Gravity = 30
-		btn.Text = "Ativado"
-		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-	else
-		Workspace.Gravity = originalGravity
-		btn.Text = "Desativado"
-		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-	end
-end)
+local noclipLabel = Instance.new("TextLabel")
+noclipLabel.Size = UDim2.new(0.6, 0, 1, 0)
+noclipLabel.Position = UDim2.new(0, 12, 0, 0)
+noclipLabel.BackgroundTransparency = 1
+noclipLabel.Text = "Ativar Noclip (Atravessar Paredes) [N]"
+noclipLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+noclipLabel.Font = Enum.Font.GothamBold
+noclipLabel.TextSize = 12
+noclipLabel.TextXAlignment = Enum.TextXAlignment.Left
+noclipLabel.Parent = noclipFrame
 
-criarFrameConfig("Salva-Vidas (Anti-Void)", "Desativado", moveScroll, function(btn)
-	antiVoidActive = not antiVoidActive
-	btn.Text = antiVoidActive and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = antiVoidActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(45, 45, 55)
+local noclipBtn = Instance.new("TextButton")
+noclipBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
+noclipBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
+noclipBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+noclipBtn.Text = "Desativado"
+noclipBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+noclipBtn.Font = Enum.Font.GothamMedium
+noclipBtn.TextSize = 11
+noclipBtn.BorderSizePixel = 0
+noclipBtn.Parent = noclipFrame
+
+local noclipBtnCorner = Instance.new("UICorner")
+noclipBtnCorner.CornerRadius = UDim.new(0, 5)
+noclipBtnCorner.Parent = noclipBtn
+
+noclipBtn.MouseButton1Click:Connect(function()
+	toggleNoclip(noclipBtn)
 end)
 
 moveLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	moveScroll.CanvasSize = UDim2.new(0, 0, 0, moveLayout.AbsoluteContentSize.Y + 10)
+	moveScroll.CanvasSize = UDim2.new(0, 0, 0, moveLayout.AbsoluteContentSize.Y + 15)
 end)
 
 -- ==========================================
--- CONTEÚDO DA ABA: JOGADORES (SPECTATE / TELEPORT)
+-- CONTEÚDO DA ABA: JOGADORES (TELEPORTE & SPECTATE)
 -- ==========================================
 do
 	local pSearch = Instance.new("TextBox")
-	pSearch.Size = UDim2.new(1, -10, 0, 28)
+	pSearch.Size = UDim2.new(1, 0, 0, 32)
 	pSearch.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 	pSearch.PlaceholderText = "Pesquisar jogador..."
 	pSearch.PlaceholderColor3 = Color3.fromRGB(120, 120, 130)
 	pSearch.Text = ""
 	pSearch.TextColor3 = Color3.fromRGB(240, 240, 240)
 	pSearch.Font = Enum.Font.Gotham
-	pSearch.TextSize = 11
+	pSearch.TextSize = 12
 	pSearch.BorderSizePixel = 0
 	pSearch.Parent = playersPage
 
 	local pSearchCorner = Instance.new("UICorner")
-	pSearchCorner.CornerRadius = UDim.new(0, 5)
+	pSearchCorner.CornerRadius = UDim.new(0, 6)
 	pSearchCorner.Parent = pSearch
 
+	local pSearchPadding = Instance.new("UIPadding")
+	pSearchPadding.PaddingLeft = UDim.new(0, 8)
+	pSearchPadding.Parent = pSearch
+
 	local pScroll = Instance.new("ScrollingFrame")
-	pScroll.Size = UDim2.new(1, 0, 1, -35)
-	pScroll.Position = UDim2.new(0, 0, 0, 35)
+	pScroll.Size = UDim2.new(1, 0, 1, -45)
+	pScroll.Position = UDim2.new(0, 0, 0, 40)
 	pScroll.BackgroundTransparency = 1
 	pScroll.BorderSizePixel = 0
 	pScroll.ScrollBarThickness = 4
@@ -1132,7 +1628,7 @@ do
 	pScroll.Parent = playersPage
 
 	local pListLayout = Instance.new("UIListLayout")
-	pListLayout.Padding = UDim.new(0, 5)
+	pListLayout.Padding = UDim.new(0, 6)
 	pListLayout.Parent = pScroll
 
 	local spectatingPlayer = nil
@@ -1145,40 +1641,74 @@ do
 				if sBtn then
 					sBtn.Text = "Espectar"
 					sBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+					sBtn.TextColor3 = Color3.fromRGB(180, 180, 190)
 				end
 			end
 		end
 	end
 
+	-- Modificado com programação defensiva para evitar crashes no executor
 	local function alternarEspectador(targetPlayer, specBtn)
 		local camera = workspace.CurrentCamera
 		if not camera then return end
 
 		if spectateConnection then
-			pcall(function() spectateConnection:Disconnect() end)
+			pcall(function()
+				spectateConnection:Disconnect()
+			end)
 			spectateConnection = nil
 		end
 
 		if spectatingPlayer == targetPlayer then
 			spectatingPlayer = nil
 			camera.CameraType = Enum.CameraType.Custom
+
 			local _, _, localHum = GetCharacter()
-			if localHum then camera.CameraSubject = localHum end
-			resetarBotoesEspectar()
-			setStatus("Câmera restaurada.")
+			if localHum then
+				camera.CameraSubject = localHum
+			end
+			if resetarBotoesEspectar then
+				resetarBotoesEspectar()
+			end
+			if setStatus then
+				setStatus("Câmera restaurada ao seu personagem.")
+			end
 		else
 			local targetChar = targetPlayer.Character
-			local targetHum = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+			local targetHum = targetChar and (targetChar:FindFirstChild("Humanoid") or targetChar:FindFirstChildOfClass("Humanoid"))
 
 			if targetHum then
-				resetarBotoesEspectar()
+				if resetarBotoesEspectar then
+					resetarBotoesEspectar()
+				end
 				spectatingPlayer = targetPlayer
+
 				camera.CameraType = Enum.CameraType.Custom
 				camera.CameraSubject = targetHum
 
 				specBtn.Text = "Olhando"
 				specBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-				setStatus("Espectando: " .. targetPlayer.DisplayName)
+				specBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				if setStatus then
+					setStatus("Espectando: " .. tostring(targetPlayer.DisplayName or targetPlayer.Name))
+				end
+
+				if targetPlayer.CharacterAdded then
+					spectateConnection = targetPlayer.CharacterAdded:Connect(function(newChar)
+						task.wait(0.2)
+						if spectatingPlayer == targetPlayer then
+							local newHum = newChar:WaitForChild("Humanoid", 5) or newChar:FindFirstChildOfClass("Humanoid")
+							if newHum then
+								camera.CameraType = Enum.CameraType.Custom
+								camera.CameraSubject = newHum
+							end
+						end
+					end)
+				end
+			else
+				if setStatus then
+					setStatus("Jogador indisponível ou morto.")
+				end
 			end
 		end
 	end
@@ -1191,6 +1721,8 @@ do
 		if localRoot and targetRoot then
 			localRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 3, 0)
 			setStatus("Teleportado para: " .. targetPlayer.DisplayName)
+		else
+			setStatus("Erro: Componentes físicos ausentes.")
 		end
 	end
 
@@ -1203,20 +1735,27 @@ do
 			if otherPlayer ~= LocalPlayer then
 				local rowFrame = Instance.new("Frame")
 				rowFrame.Name = otherPlayer.Name .. "_row"
-				rowFrame.Size = UDim2.new(1, -10, 0, 30)
+				rowFrame.Size = UDim2.new(1, -10, 0, 34)
 				rowFrame.BackgroundTransparency = 1
+				rowFrame.BorderSizePixel = 0
 				rowFrame.Parent = pScroll
 
 				local tpBtn = Instance.new("TextButton")
+				tpBtn.Name = "TeleportButton"
 				tpBtn.Size = UDim2.new(0.7, -4, 1, 0)
+				tpBtn.Position = UDim2.new(0, 0, 0, 0)
 				tpBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 				tpBtn.BorderSizePixel = 0
 				tpBtn.Text = string.format("  %s (@%s)", otherPlayer.DisplayName, otherPlayer.Name)
 				tpBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
 				tpBtn.Font = Enum.Font.GothamMedium
-				tpBtn.TextSize = 9.5
+				tpBtn.TextSize = 10
 				tpBtn.TextXAlignment = Enum.TextXAlignment.Left
 				tpBtn.Parent = rowFrame
+
+				local tpCorner = Instance.new("UICorner")
+				tpCorner.CornerRadius = UDim.new(0, 5)
+				tpCorner.Parent = tpBtn
 
 				local specBtn = Instance.new("TextButton")
 				specBtn.Name = "SpectateButton"
@@ -1227,19 +1766,44 @@ do
 				specBtn.Text = "Espectar"
 				specBtn.TextColor3 = Color3.fromRGB(180, 180, 190)
 				specBtn.Font = Enum.Font.GothamBold
-				specBtn.TextSize = 9
+				specBtn.TextSize = 10
 				specBtn.Parent = rowFrame
 
-				local rowCorner = Instance.new("UICorner")
-				rowCorner.CornerRadius = UDim.new(0, 4)
-				rowCorner.Parent = tpBtn
-
 				local specCorner = Instance.new("UICorner")
-				specCorner.CornerRadius = UDim.new(0, 4)
+				specCorner.CornerRadius = UDim.new(0, 5)
 				specCorner.Parent = specBtn
 
-				tpBtn.MouseButton1Click:Connect(function() teleportToPlayer(otherPlayer) end)
-				specBtn.MouseButton1Click:Connect(function() alternarEspectador(otherPlayer, specBtn) end)
+				if spectatingPlayer == otherPlayer then
+					specBtn.Text = "Olhando"
+					specBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+					specBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				end
+
+				tpBtn.MouseEnter:Connect(function()
+					TweenService:Create(tpBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(130, 50, 200), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+				end)
+				tpBtn.MouseLeave:Connect(function()
+					if tpBtn then
+						TweenService:Create(tpBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(22, 22, 28), TextColor3 = Color3.fromRGB(200, 200, 210)}):Play()
+					end
+				end)
+				tpBtn.MouseButton1Click:Connect(function()
+					teleportToPlayer(otherPlayer)
+				end)
+
+				specBtn.MouseEnter:Connect(function()
+					if spectatingPlayer ~= otherPlayer then
+						TweenService:Create(specBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(80, 80, 95), TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+					end
+				end)
+				specBtn.MouseLeave:Connect(function()
+					if specBtn and spectatingPlayer ~= otherPlayer then
+						TweenService:Create(specBtn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(28, 28, 35), TextColor3 = Color3.fromRGB(180, 180, 190)}):Play()
+					end
+				end)
+				specBtn.MouseButton1Click:Connect(function()
+					alternarEspectador(otherPlayer, specBtn)
+				end)
 			end
 		end
 		pScroll.CanvasSize = UDim2.new(0, 0, 0, pListLayout.AbsoluteContentSize.Y + 10)
@@ -1254,117 +1818,313 @@ do
 		end
 	end)
 
-	Players.PlayerAdded:Connect(function() task.wait(0.5); updatePlayersList() end)
+	Players.PlayerAdded:Connect(function() task.wait(0.5) updatePlayersList() end)
 	Players.PlayerRemoving:Connect(updatePlayersList)
 	updatePlayersList()
 end
 
 -- ==========================================
--- CONTEÚDO DA ABA: FLEE THE FACILITY / AUTO FARM
+-- CONTEÚDO DA ABA: ITENS (TELEPORTE & ESP DE ITENS)
 -- ==========================================
-local ftfScroll = Instance.new("ScrollingFrame")
-ftfScroll.Size = UDim2.new(1, 0, 1, 0)
-ftfScroll.BackgroundTransparency = 1
-ftfScroll.BorderSizePixel = 0
-ftfScroll.ScrollBarThickness = 4
-ftfScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
-ftfScroll.Parent = ftfPage
+local itemScroll = Instance.new("ScrollingFrame")
+itemScroll.Size = UDim2.new(1, 0, 1, 0)
+itemScroll.BackgroundTransparency = 1
+itemScroll.BorderSizePixel = 0
+itemScroll.ScrollBarThickness = 4
+itemScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
+itemScroll.Parent = itemsPage
 
-local ftfLayout = Instance.new("UIListLayout")
-ftfLayout.Padding = UDim.new(0, 6)
-ftfLayout.Parent = ftfScroll
+local itemListLayout = Instance.new("UIListLayout")
+itemListLayout.Padding = UDim.new(0, 8)
+itemListLayout.Parent = itemScroll
 
--- Configurações Ativas do Auto Farm Sobrevivente
-criarFrameConfig("Survivor Auto Farm", "Desativado", ftfScroll, function(btn)
-	ComputerAutoFarm = not ComputerAutoFarm
-	btn.Text = ComputerAutoFarm and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = ComputerAutoFarm and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	if ComputerAutoFarm then DoSurvivorFarm() end
+criarFrameConfig("Mostrar Nomes de Itens (ESP)", "Desativado", itemScroll, function(btn)
+	itemEspActive = not itemEspActive
+	if itemEspActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("ESP de itens ativo.")
+
+		for _, descendant in ipairs(Workspace:GetDescendants()) do
+			aplicarItemESP(descendant)
+		end
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("ESP de itens inativo.")
+
+		for _, descendant in ipairs(Workspace:GetDescendants()) do
+			if descendant:IsA("BillboardGui") and descendant.Name == "ItemESP_Tag" then
+				descendant:Destroy()
+			end
+		end
+	end
 end)
 
-criarFrameConfig("Nunca Trocar de PC no Meio", "Desativado", ftfScroll, function(btn)
-	KeepComputer = not KeepComputer
-	btn.Text = KeepComputer and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = KeepComputer and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+local function teleportToItem(itemName)
+	local _, rootPart, _ = GetCharacter()
+	if not rootPart then return end
 
-criarFrameConfig("Auto Esconder no Hacking", "Desativado", ftfScroll, function(btn)
-	AutoHideHack = not AutoHideHack
-	btn.Text = AutoHideHack and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = AutoHideHack and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+	local itemsFolder = Workspace:FindFirstChild("Items")
+	local item = (itemsFolder and itemsFolder:FindFirstChild(itemName)) or Workspace:FindFirstChild(itemName)
 
-criarFrameConfig("Teleport Direto (Sem Glide)", "Desativado", ftfScroll, function(btn)
-	TeleportInsteadTweenPCFarm = not TeleportInsteadTweenPCFarm
-	btn.Text = TeleportInsteadTweenPCFarm and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = TeleportInsteadTweenPCFarm and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+	if item then
+		if item:IsA("Model") then
+			rootPart.CFrame = item:GetPivot() + Vector3.new(0, 3, 0)
+		elseif item:IsA("BasePart") then
+			rootPart.CFrame = item.CFrame + Vector3.new(0, 3, 0)
+		end
+		setStatus("Teleportado para: " .. itemName)
+	else
+		setStatus("Não encontrado: " .. itemName)
+	end
+end
 
--- Configurações Beast Farm
-criarFrameConfig("Beast Auto Farm", "Desativado", ftfScroll, function(btn)
-	AutoBeastFarm = not AutoBeastFarm
-	btn.Text = AutoBeastFarm and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = AutoBeastFarm and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	if AutoBeastFarm then DoBeastFarm() end
-end)
+local targetItems = {"Purple Key", "Crowbar", "Battery"}
 
-criarFrameConfig("Espera Portas para Sair", "Desativado", ftfScroll, function(btn)
-	WaitForExitBeastFarm = not WaitForExitBeastFarm
-	btn.Text = WaitForExitBeastFarm and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = WaitForExitBeastFarm and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+for _, itemName in ipairs(targetItems) do
+	local iBtn = Instance.new("TextButton")
+	iBtn.Size = UDim2.new(1, -10, 0, 35)
+	iBtn.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+	iBtn.Text = "Teleportar para: " .. itemName
+	iBtn.TextColor3 = Color3.fromRGB(220, 220, 230)
+	iBtn.Font = Enum.Font.GothamBold
+	iBtn.TextSize = 12
+	iBtn.BorderSizePixel = 0
+	iBtn.Parent = itemScroll
 
-criarFrameInput("Velocidade do Farm (Normal: 16):", FarmTweenSpeed, ftfScroll, function(val)
-	FarmTweenSpeed = val
-end)
+	local iBtnCorner = Instance.new("UICorner")
+	iBtnCorner.CornerRadius = UDim.new(0, 6)
+	iBtnCorner.Parent = iBtn
 
--- Hacks Específicos & Evasão do Seer
-criarFrameConfig("Auto-Esconder do Seer", "Desativado", ftfScroll, function(btn)
-	AutoHideFromSeer = not AutoHideFromSeer
-	btn.Text = AutoHideFromSeer and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = AutoHideFromSeer and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+	iBtn.MouseEnter:Connect(function()
+		TweenService:Create(iBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(130, 50, 200)}):Play()
+	end)
+	iBtn.MouseLeave:Connect(function()
+		if iBtn then TweenService:Create(iBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(22, 22, 28)}):Play() end
+	end)
+	iBtn.MouseButton1Click:Connect(function()
+		teleportToItem(itemName)
+	end)
+end
 
-criarFrameConfig("Retornar ao PC Após Seer", "Desativado", ftfScroll, function(btn)
-	ReturnFromHideSeer = not ReturnFromHideSeer
-	btn.Text = ReturnFromHideSeer and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = ReturnFromHideSeer and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
-
-criarFrameConfig("Destravar Queda (Anti-Ragdoll)", "Desativado", ftfScroll, function(btn)
-	RagdollMovement = not RagdollMovement
-	btn.Text = RagdollMovement and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = RagdollMovement and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
-
-criarFrameConfig("Esconder se a Fera Estiver Perto", "Desativado", ftfScroll, function(btn)
-	HideBeastNear = not HideBeastNear
-	btn.Text = HideBeastNear and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = HideBeastNear and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
-
-criarFrameInput("Distância de Detecção Fera:", HideBeastNearDist, ftfScroll, function(val)
-	HideBeastNearDist = val
-end)
-
-criarFrameConfig("Auto-Hack (Nunca Errar)", "Desativado", ftfScroll, function(btn)
-	AntiPCError = not AntiPCError
-	btn.Text = AntiPCError and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = AntiPCError and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
-
-criarFrameConfig("Acelerar Codificação (Crawl Hack)", "Desativado", ftfScroll, function(btn)
-	SpeedHackCrawlActive = not SpeedHackCrawlActive
-	btn.Text = SpeedHackCrawlActive and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = SpeedHackCrawlActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
-
-ftfLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	ftfScroll.CanvasSize = UDim2.new(0, 0, 0, ftfLayout.AbsoluteContentSize.Y + 15)
+itemListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	itemScroll.CanvasSize = UDim2.new(0, 0, 0, itemListLayout.AbsoluteContentSize.Y + 15)
 end)
 
 -- ==========================================
--- CONTEÚDO DA ABA: VISUAL (ESPS & RAY-X)
+-- TAB: COMBATE (KILL ALL / MODO DEUS)
+-- ==========================================
+local combatScroll = Instance.new("ScrollingFrame")
+combatScroll.Size = UDim2.new(1, 0, 1, 0)
+combatScroll.BackgroundTransparency = 1
+combatScroll.BorderSizePixel = 0
+combatScroll.ScrollBarThickness = 4
+combatScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
+combatScroll.Parent = combatPage
+
+local combatLayout = Instance.new("UIListLayout")
+combatLayout.Padding = UDim.new(0, 10)
+combatLayout.Parent = combatScroll
+
+-- Configurações e Variáveis de Combate
+local ARMA_PRINCIPAL = "Katana"
+local ARMA_SECUNDARIA = "Sword"
+local ROCKET = "RocketLauncher"
+local BOLA = "Superball"
+local ESTILINGUE = "ClassicSlingshot"
+local BOMBA_PRETA = "Timebomb"
+local BARREIRA = "Trowel"
+local LISTA_IGNORAR = {
+	"Katana", "Sword", "Timebomb", "RocketLauncher",
+	"Superball", "ClassicSlingshot", "MedicKit",
+	"Trowel", "GravityCoil", "SpeedCoil"
+}
+local TEMPO_GRUDADO = 0.5
+local VIDA_MINIMA = 40
+_G.KillAllAtivo = false
+
+local function FindTool(toolName)
+	local character, _, _ = GetCharacter()
+	local backpack = LocalPlayer:FindFirstChild("Backpack")
+	if not character or not backpack then return nil end
+	return character:FindFirstChild(toolName) or backpack:FindFirstChild(toolName)
+end
+
+local function FindMysteryTool()
+	local character, _, _ = GetCharacter()
+	local backpack = LocalPlayer:FindFirstChild("Backpack")
+
+	local function CheckList(parent)
+		if not parent then return nil end
+		for _, item in pairs(parent:GetChildren()) do
+			if item:IsA("Tool") then
+				local ehConhecido = false
+				for _, nomeIgnorado in pairs(LISTA_IGNORAR) do
+					if item.Name == nomeIgnorado then
+						ehConhecido = true
+						break
+					end
+				end
+				if not ehConhecido then return item end
+			end
+		end
+		return nil
+	end
+	return CheckList(character) or CheckList(backpack)
+end
+
+local function SnapCamera(TargetRoot, chao)
+	if not TargetRoot then return end
+	local cam = workspace.CurrentCamera
+	if chao then
+		local PeDoInimigo = TargetRoot.Position - Vector3.new(0, 6, 0)
+		cam.CFrame = CFrame.new(cam.CFrame.Position, PeDoInimigo)
+	else
+		cam.CFrame = CFrame.new(cam.CFrame.Position, TargetRoot.Position)
+	end
+end
+
+local function EquipAndUse(tool, TargetRoot)
+	local character, rootPart, _ = GetCharacter()
+	if tool and character and rootPart then
+		tool.Parent = character
+		if TargetRoot then
+			rootPart.CFrame = TargetRoot.CFrame
+		end
+
+		RunService.Heartbeat:Wait() 
+
+		if TargetRoot and rootPart then
+			rootPart.CFrame = TargetRoot.CFrame
+		end
+
+		if tool.Parent == character then
+			tool:Activate()
+			return true
+		end
+	end
+	return false
+end
+
+local function CheckHeal()
+	local character, _, humanoid = GetCharacter()
+	if humanoid and humanoid.Health < VIDA_MINIMA then
+		local Kit = FindTool("MedicKit")
+		if Kit then
+			Kit.Parent = character
+			RunService.Heartbeat:Wait()
+			Kit:Activate()
+		end
+	end
+end
+
+local function AttackTarget(TargetPlayer)
+	local _, MyRoot, _ = GetCharacter()
+	local TargetChar = TargetPlayer.Character
+
+	if not MyRoot or not TargetChar then return end
+	local TargetRoot = TargetChar:FindFirstChild("HumanoidRootPart")
+	local TargetHumanoid = TargetChar:FindFirstChild("Humanoid")
+
+	if not TargetRoot or not TargetHumanoid or TargetHumanoid.Health <= 0 then return end
+
+	local Connection
+	Connection = RunService.RenderStepped:Connect(function()
+		if TargetRoot and MyRoot and TargetChar.Parent and TargetHumanoid.Health > 0 then
+			MyRoot.CFrame = TargetRoot.CFrame
+			MyRoot.AssemblyLinearVelocity = Vector3.zero
+		else
+			if Connection then Connection:Disconnect() end
+		end
+	end)
+
+	local StartTime = tick()
+	SnapCamera(TargetRoot, true) 
+
+	local Pa = FindTool(BARREIRA)
+	if Pa then EquipAndUse(Pa, TargetRoot) end 
+
+	local BombaP = FindTool(BOMBA_PRETA)
+	if BombaP then EquipAndUse(BombaP, TargetRoot) end 
+
+	local Misterio = FindMysteryTool()
+	if Misterio then EquipAndUse(Misterio, TargetRoot) end 
+
+	while (tick() - StartTime) < TEMPO_GRUDADO do
+		if not TargetChar.Parent or TargetHumanoid.Health <= 0 then break end
+		CheckHeal()
+
+		MyRoot.CFrame = TargetRoot.CFrame
+		SnapCamera(TargetRoot, false)
+
+		local Bola = FindTool(BOLA)
+		if Bola then EquipAndUse(Bola, TargetRoot) end
+
+		local Estilingue = FindTool(ESTILINGUE)
+		if Estilingue then EquipAndUse(Estilingue, TargetRoot) end
+
+		local LancaRocket = FindTool(ROCKET)
+		if LancaRocket then EquipAndUse(LancaRocket, TargetRoot) end
+
+		local Espada = FindTool(ARMA_PRINCIPAL) or FindTool(ARMA_SECUNDARIA)
+		if Espada then
+			EquipAndUse(Espada, TargetRoot)
+		end
+
+		RunService.Heartbeat:Wait()
+	end
+
+	if Connection then Connection:Disconnect() end
+end
+
+criarFrameConfig("Ativar Kill All", "Desativado", combatScroll, function(btn)
+	_G.KillAllAtivo = not _G.KillAllAtivo
+	if _G.KillAllAtivo then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Kill All Ativado.")
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Kill All Desativado.")
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait()
+		if _G.KillAllAtivo then
+			pcall(function()
+				local _, MyRoot, _ = GetCharacter()
+				if MyRoot then
+					CheckHeal()
+					for _, Target in ipairs(Players:GetPlayers()) do
+						if _G.KillAllAtivo and Target ~= LocalPlayer and not IsTeammate(Target) then
+							if Target.Character and Target.Character:FindFirstChild("HumanoidRootPart") then
+								local hum = Target.Character:FindFirstChildOfClass("Humanoid")
+								if hum and hum.Health > 0 then
+									AttackTarget(Target)
+								end
+							end
+						end
+					end
+				end
+			end)
+		end
+	end
+end)
+
+combatLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	combatScroll.CanvasSize = UDim2.new(0, 0, 0, combatLayout.AbsoluteContentSize.Y + 15)
+end)
+
+-- ==========================================
+-- TAB: VISUAL (ESP, RAIO-X & CHAMS)
 -- ==========================================
 local visualScroll = Instance.new("ScrollingFrame")
 visualScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -1375,161 +2135,828 @@ visualScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
 visualScroll.Parent = visualPage
 
 local visualLayout = Instance.new("UIListLayout")
-visualLayout.Padding = UDim.new(0, 6)
+visualLayout.Padding = UDim.new(0, 10)
 visualLayout.Parent = visualScroll
 
-criarFrameConfig("Chams de Jogadores (Koala)", "Desativado", visualScroll, function(btn)
-	local state = (btn.Text == "Desativado")
-	btn.Text = state and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = state and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	UpdatePlrESP(state)
-end)
+-- Chams de Cores
+local chamsFrame = Instance.new("Frame")
+chamsFrame.Size = UDim2.new(1, -10, 0, 45)
+chamsFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+chamsFrame.BorderSizePixel = 0
+chamsFrame.Parent = visualScroll
 
-criarFrameConfig("Chams de Fera (Koala)", "Desativado", visualScroll, function(btn)
-	local state = (btn.Text == "Desativado")
-	btn.Text = state and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = state and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	UpdateBeastESP(state)
-end)
+local chamsCorner = Instance.new("UICorner")
+chamsCorner.CornerRadius = UDim.new(0, 6)
+chamsCorner.Parent = chamsFrame
 
-criarFrameConfig("ESP de Computadores Dinâmico", "Desativado", visualScroll, function(btn)
-	ComputerTableESPActive = not ComputerTableESPActive
-	btn.Text = ComputerTableESPActive and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = ComputerTableESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	atualizarComputerTableESP()
-end)
+local chamsLabel = Instance.new("TextLabel")
+chamsLabel.Size = UDim2.new(0.6, 0, 1, 0)
+chamsLabel.Position = UDim2.new(0, 12, 0, 0)
+chamsLabel.BackgroundTransparency = 1
+chamsLabel.Text = "Habilitar ESP (Chams de Cores)"
+chamsLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+chamsLabel.Font = Enum.Font.GothamBold
+chamsLabel.TextSize = 12
+chamsLabel.TextXAlignment = Enum.TextXAlignment.Left
+chamsLabel.Parent = chamsFrame
 
-criarFrameConfig("ESP de Células (FreezePods)", "Desativado", visualScroll, function(btn)
-	FreezePodESPActive = not FreezePodESPActive
-	btn.Text = FreezePodESPActive and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = FreezePodESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	atualizarFreezePodESP()
-end)
+local chamsBtn = Instance.new("TextButton")
+chamsBtn.Size = UDim2.new(0.3, 0, 0.7, 0)
+chamsBtn.Position = UDim2.new(0.65, 0, 0.15, 0)
+chamsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+chamsBtn.Text = "Desativado"
+chamsBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+chamsBtn.Font = Enum.Font.GothamMedium
+chamsBtn.TextSize = 11
+chamsBtn.BorderSizePixel = 0
+chamsBtn.Parent = chamsFrame
 
-criarFrameConfig("ESP de Armários (Lockers)", "Desativado", visualScroll, function(btn)
-	lockerESPActive = not lockerESPActive
-	btn.Text = lockerESPActive and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = lockerESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	updateLockerESP()
-end)
+local chamsBtnCorner = Instance.new("UICorner")
+chamsBtnCorner.CornerRadius = UDim.new(0, 5)
+chamsBtnCorner.Parent = chamsBtn
 
-criarFrameConfig("ESP de Ventilações (Dutos)", "Desativado", visualScroll, function(btn)
-	ventESPActive = not ventESPActive
-	btn.Text = ventESPActive and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = ventESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	updateVentESP()
-end)
+chamsBtn.MouseButton1Click:Connect(toggleChams)
 
-criarFrameConfig("ESP de Portas e Saídas", "Desativado", visualScroll, function(btn)
-	ftfVisualsActive = not ftfVisualsActive
-	btn.Text = ftfVisualsActive and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = ftfVisualsActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	applyFTFHighlight("ExitDoor", Color3.fromRGB(255, 255, 0))
-	applyFTFHighlight("AirVent", Color3.fromRGB(100, 100, 100))
-end)
-
-criarFrameConfig("ESP de Itens Soltos", "Desativado", visualScroll, function(btn)
-	itemEspActive = not itemEspActive
-	btn.Text = itemEspActive and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = itemEspActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-	for _, descendant in ipairs(Workspace:GetDescendants()) do
-		if itemEspActive then aplicarItemESP(descendant) else
-			if descendant:IsA("BillboardGui") and descendant.Name == "ItemESP_Tag" then descendant:Destroy() end
-		end
-	end
-end)
-
+-- Fullbright (Brilho Máximo)
 criarFrameConfig("Brilho Máximo (Fullbright)", "Desativado", visualScroll, function(btn)
 	FullbrightActive = not FullbrightActive
 	if FullbrightActive then
 		btn.Text = "Ativado"
 		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		Lighting.Ambient = Color3.fromRGB(255, 255, 255)
 		Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
 		Lighting.GlobalShadows = false
+		setStatus("Fullbright Ativado.")
 	else
 		btn.Text = "Desativado"
 		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
 		Lighting.Ambient = originalAmbient
 		Lighting.OutdoorAmbient = originalOutdoor
 		Lighting.GlobalShadows = originalShadows
+		setStatus("Fullbright Desativado.")
 	end
 end)
 
-visualLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	visualScroll.CanvasSize = UDim2.new(0, 0, 0, visualLayout.AbsoluteContentSize.Y + 10)
+-- No Fog (Remover Névoa)
+criarFrameConfig("Remover Névoa (No Fog)", "Desativado", visualScroll, function(btn)
+	noFogActive = not noFogActive
+	if noFogActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+		originalFogStart = Lighting.FogStart
+		originalFogEnd = Lighting.FogEnd
+		originalAtmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+
+		Lighting.FogStart = 999999
+		Lighting.FogEnd = 999999
+		if originalAtmosphere then
+			originalAtmosphere.Parent = nil
+		end
+		setStatus("Névoa Removida.")
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+
+		Lighting.FogStart = originalFogStart
+		Lighting.FogEnd = originalFogEnd
+		if originalAtmosphere then
+			originalAtmosphere.Parent = Lighting
+		end
+		setStatus("Névoa Restaurada.")
+	end
 end)
 
--- ==========================================
--- CONTEÚDO DA ABA: TROLL & SOUNDS
--- ==========================================
-local trollScroll = Instance.new("ScrollingFrame")
-trollScroll.Size = UDim2.new(1, 0, 1, 0)
-trollScroll.BackgroundTransparency = 1
-trollScroll.BorderSizePixel = 0
-trollScroll.ScrollBarThickness = 4
-trollScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
-trollScroll.Parent = trollPage
+-- X-Ray (Modo Raio-X)
+local xrayActive = false
+local originalTransparencies = {}
 
-local trollLayout = Instance.new("UIListLayout")
-trollLayout.Padding = UDim.new(0, 6)
-trollLayout.Parent = trollScroll
+criarFrameConfig("Modo Raio-X (X-Ray)", "Desativado", visualScroll, function(btn)
+	xrayActive = not xrayActive
+	if xrayActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Modo Raio-X ativo.")
 
-criarFrameConfig("Desacelerar Fera (Glitch)", "Desativado", trollScroll, function(btn)
-	SlowBeast = not SlowBeast
-	btn.Text = SlowBeast and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = SlowBeast and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+		local character, _, _ = GetCharacter()
+		for _, part in ipairs(Workspace:GetDescendants()) do
+			if part:IsA("BasePart") and not part:IsDescendantOf(character) and not part.Parent:FindFirstChildOfClass("Humanoid") then
+				originalTransparencies[part] = part.Transparency
+				part.Transparency = 0.5
+			end
+		end
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Modo Raio-X desativado.")
+
+		for part, trans in pairs(originalTransparencies) do
+			if part and part.Parent then
+				part.Transparency = trans
+			end
+		end
+		originalTransparencies = {}
+	end
 end)
 
-criarFrameConfig("Soltar Todos da Corda", "Desativado", trollScroll, function(btn)
-	UnTieAll = not UnTieAll
-	btn.Text = UnTieAll and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = UnTieAll and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+-- Name Tags (ESP)
+local nameTagsActive = false
 
-criarFrameConfig("Auto-Soltar Minha Corda", "Desativado", trollScroll, function(btn)
-	UnTieMe = not UnTieMe
-	btn.Text = UnTieMe and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = UnTieMe and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+criarFrameConfig("Mostrar Tags de Nome (ESP)", "Desativado", visualScroll, function(btn)
+	nameTagsActive = not nameTagsActive
+	if nameTagsActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Tags de Nome ativadas.")
 
-criarFrameConfig("Fling na Fera", "Executar", trollScroll, function()
-	if not PU then setStatus("Erro: Biblioteca física não carregada.") return end
-	for _, v in ipairs(Players:GetPlayers()) do
-		if v:FindFirstChild("TempPlayerStatsModule") and v.TempPlayerStatsModule:FindFirstChild("IsBeast") and v.TempPlayerStatsModule.IsBeast.Value == true and v ~= LocalPlayer then
-			local success, result = pcall(function() return PU:FlingPlayer(v) end)
-			if success then setStatus("Tentando fling na fera...") else setStatus("Falha ao processar física.") end
-			return
+		for _, player in ipairs(Players:GetPlayers()) do
+			criarTag(player)
+		end
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Tags de Nome desativadas.")
+		nameTagsActive = false
+
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player.Character then
+				local head = player.Character:FindFirstChild("Head")
+				local tag = head and head:FindFirstChild("SpiderNameTag")
+				if tag then tag:Destroy() end
+			end
 		end
 	end
-	setStatus("Nenhuma fera encontrada.")
 end)
 
--- Sistema de SPAM do Soundboard
-criarFrameConfig("Spam: Som de Acerto", "Desativado", trollScroll, function(btn)
-	STSpamCorrect = not STSpamCorrect
-	btn.Text = STSpamCorrect and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = STSpamCorrect and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+-- Campo de Visão (FOV)
+do
+	local fovFrame = Instance.new("Frame")
+	fovFrame.Size = UDim2.new(1, -10, 0, 45)
+	fovFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+	fovFrame.BorderSizePixel = 0
+	fovFrame.Parent = visualScroll
 
-criarFrameConfig("Spam: Som de Alerta", "Desativado", trollScroll, function(btn)
-	STSpamWarning = not STSpamWarning
-	btn.Text = STSpamWarning and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = STSpamWarning and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+	local fovCorner = Instance.new("UICorner")
+	fovCorner.CornerRadius = UDim.new(0, 6)
+	fovCorner.Parent = fovFrame
 
-criarFrameConfig("Spam: Sirene de Saída", "Desativado", trollScroll, function(btn)
-	STSpamExitsUnlock = not STSpamExitsUnlock
-	btn.Text = STSpamExitsUnlock and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = STSpamExitsUnlock and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
+	local fovLabel = Instance.new("TextLabel")
+	fovLabel.Size = UDim2.new(0.5, 0, 1, 0)
+	fovLabel.Position = UDim2.new(0, 12, 0, 0)
+	fovLabel.BackgroundTransparency = 1
+	fovLabel.Text = "Campo de Visão (FOV):"
+	fovLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+	fovLabel.Font = Enum.Font.GothamBold
+	fovLabel.TextSize = 12
+	fovLabel.TextXAlignment = Enum.TextXAlignment.Left
+	fovLabel.Parent = fovFrame
 
-trollLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	trollScroll.CanvasSize = UDim2.new(0, 0, 0, trollLayout.AbsoluteContentSize.Y + 10)
+	local fovInput = Instance.new("TextBox")
+	fovInput.Size = UDim2.new(0.3, 0, 0.7, 0)
+	fovInput.Position = UDim2.new(0.65, 0, 0.15, 0)
+	fovInput.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
+	fovInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fovInput.Text = tostring(workspace.CurrentCamera.FieldOfView)
+	fovInput.Font = Enum.Font.GothamBold
+	fovInput.TextSize = 12
+	fovInput.BorderSizePixel = 0
+	fovInput.Parent = fovFrame
+
+	local fovInputCorner = Instance.new("UICorner")
+	fovInputCorner.CornerRadius = UDim.new(0, 5)
+	fovInputCorner.Parent = fovInput
+
+	fovInput.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			local newFov = tonumber(fovInput.Text)
+			if newFov then
+				local clampedFov = math.clamp(newFov, 10, 120)
+				workspace.CurrentCamera.FieldOfView = clampedFov
+				fovInput.Text = tostring(clampedFov)
+				setStatus("FOV definido para " .. clampedFov)
+			else
+				fovInput.Text = tostring(workspace.CurrentCamera.FieldOfView)
+			end
+		end
+	end)
+end
+
+visualLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	visualScroll.CanvasSize = UDim2.new(0, 0, 0, visualLayout.AbsoluteContentSize.Y + 15)
 end)
 
 -- ==========================================
--- CONTEÚDO DA ABA: UTILITÁRIOS
+-- TAB: FLEE THE FACILITY (Otimizado via Koala Scripts)
+-- ==========================================
+local ftfScroll = Instance.new("ScrollingFrame")
+ftfScroll.Size = UDim2.new(1, 0, 1, 0)
+ftfScroll.BackgroundTransparency = 1
+ftfScroll.BorderSizePixel = 0
+ftfScroll.ScrollBarThickness = 4
+ftfScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
+ftfScroll.Parent = ftfPage
+
+local ftfLayout = Instance.new("UIListLayout")
+ftfLayout.Padding = UDim.new(0, 10)
+ftfLayout.Parent = ftfScroll
+
+-- 1. Auto-Hack (Sem falhar minigame)
+local autoHackActive = false
+criarFrameConfig("Nunca Errar Hack (Auto-Hack)", "Desativado", ftfScroll, function(btn)
+	autoHackActive = not autoHackActive
+	btn.Text = autoHackActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = autoHackActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+	task.spawn(function()
+		while autoHackActive do
+			if RemoteEvent then
+				pcall(function()
+					RemoteEvent:FireServer("SetPlayerMinigameResult", true)
+				end)
+			end
+			task.wait(0.1)
+		end
+	end)
+end)
+
+-- 2. ESP de Computadores Dinâmico com Porcentagem Persistente (Tempo Todo Visível)
+local pcProgConnection
+criarFrameConfig("ESP Computadores Dinâmico", "Desativado", ftfScroll, function(btn)
+	ComputerTableESPActive = not ComputerTableESPActive
+	btn.Text = ComputerTableESPActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = ComputerTableESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+	if ComputerTableESPActive then
+		pcProgConnection = RunService.Heartbeat:Connect(function()
+			local currentMap = ReplicatedStorage:FindFirstChild("CurrentMap")
+			local mapValue = currentMap and currentMap.Value
+			if not mapValue then return end
+
+			local typingPlayers = {}
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p ~= LocalPlayer and p.Character and p:FindFirstChild("TempPlayerStatsModule") then
+					local anim = p.TempPlayerStatsModule:FindFirstChild("CurrentAnimation")
+					if anim and anim.Value == "Typing" then
+						table.insert(typingPlayers, p)
+					end
+				end
+			end
+
+			for _, v in ipairs(mapValue:GetChildren()) do
+				if v.Name == "ComputerTable" and v:IsA("Model") then
+					aplicarComputerESP(v)
+					local billboard = v:FindFirstChild("KSBillboard")
+
+					if billboard then
+						local progress = nil
+						for _, tpPlr in ipairs(typingPlayers) do
+							if tpPlr.Character and tpPlr.Character:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Screen") then
+								local dist = (tpPlr.Character.HumanoidRootPart.Position - v.Screen.Position).Magnitude
+								if dist < 15 then
+									local stats = tpPlr:FindFirstChild("TempPlayerStatsModule")
+									local progressVal = stats and stats:FindFirstChild("ActionProgress")
+									if progressVal then
+										progress = math.round(progressVal.Value * 100)
+									end
+								end
+							end
+						end
+
+						-- Sincroniza e mantém o progresso visível o tempo todo
+						if progress then
+							pcProgressTracker[v] = progress
+						elseif not pcProgressTracker[v] then
+							pcProgressTracker[v] = 0
+						end
+
+						billboard.TextLabel.Text = string.format("PC | Progresso: %d%%", pcProgressTracker[v])
+					end
+				end
+			end
+		end)
+		setStatus("ESP Computadores Ativado.")
+	else
+		if pcProgConnection then
+			pcProgConnection:Disconnect()
+			pcProgConnection = nil
+		end
+		atualizarComputerTableESP()
+		setStatus("ESP Computadores Desativado.")
+	end
+end)
+
+-- 3. FUNCIONALIDADE INTEGRADA: Acelerar Codificação (Crawl Exploit)
+local speedHackCrawlActive = false
+local crawlAnim = nil
+criarFrameConfig("Acelerar Codificação [Q]", "Desativado", ftfScroll, function(btn)
+	speedHackCrawlActive = not speedHackCrawlActive
+	btn.Text = speedHackCrawlActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = speedHackCrawlActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+	setStatus("Crawl Exploit: " .. (speedHackCrawlActive and "ATIVADO" or "DESATIVADO"))
+end)
+
+-- Loop que gerencia a simulação de agachamento/pulo para acelerar o progresso
+task.spawn(function()
+	while true do
+		task.wait(0.3)
+		if speedHackCrawlActive then
+			pcall(function()
+				local character, _, humanoid = GetCharacter()
+				local stats = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+
+				if character and humanoid and stats then
+					local actEvent = stats:FindFirstChild("ActionEvent")
+					local currentAnim = stats:FindFirstChild("CurrentAnimation")
+
+					if actEvent and actEvent.Value and currentAnim and currentAnim.Value == "Typing" then
+						local eventObj = actEvent.Value
+						if eventObj.Parent and eventObj.Parent.Parent and eventObj.Parent.Parent.Name == "ComputerTable" then
+
+							-- Carrega animação de engatinhar se necessário
+							if not crawlAnim then
+								local animFolder = ReplicatedStorage:FindFirstChild("Animations")
+								local crawlAsset = animFolder and animFolder:FindFirstChild("AnimCrawl")
+								if crawlAsset then
+									crawlAnim = humanoid:LoadAnimation(crawlAsset)
+								end
+							end
+
+							-- Inicia Glitch de Agachamento Rápido
+							if RemoteEvent then
+								RemoteEvent:FireServer("Input", "Crawl", true)
+								humanoid.HipHeight = -2
+								if crawlAnim then crawlAnim:Play(0.1, 1, 0) end
+								humanoid.WalkSpeed = 8
+
+								task.wait(0.2)
+
+								-- Restaura estado padrão do corpo
+								RemoteEvent:FireServer("Input", "Crawl", false)
+								humanoid.HipHeight = 0
+								if crawlAnim then crawlAnim:Stop() end
+								humanoid.WalkSpeed = 16
+
+								-- Força a reconexão imediata ao computador para registrar o progresso acelerado
+								local elapsed = 0
+								repeat
+									elapsed = elapsed + task.wait()
+									RemoteEvent:FireServer("Input", "Trigger", true, eventObj)
+									RemoteEvent:FireServer("Input", "Action", true)
+								until elapsed >= 1.5 or currentAnim.Value == "Typing"
+							end
+						end
+					end
+				end
+			end)
+		end
+	end
+end)
+
+-- 4. Esquivar do Seer Automático ( Locker Auto-Hide )
+criarFrameConfig("Auto-Esconder do Seer", "Desativado", ftfScroll, function(btn)
+	autoHideFromSeerActive = not autoHideFromSeerActive
+	btn.Text = autoHideFromSeerActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = autoHideFromSeerActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+end)
+
+-- Loop Monitor de Habilidades do Seer
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		local screenGuiObj = PlayerGui:FindFirstChild("ScreenGui")
+		local warningFrame = screenGuiObj and screenGuiObj:FindFirstChild("WarningFrame")
+
+		if warningFrame and warningFrame.Visible and autoHideFromSeerActive then
+			local character, rootPart, humanoid = GetCharacter()
+			local stats = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+			local isBeast = stats and stats:FindFirstChild("IsBeast") and stats.IsBeast.Value == true
+
+			if character and rootPart and humanoid and humanoid.Health > 0 and not isBeast and not hadSeerHide then
+				hadSeerHide = true
+				if not lastSeerHidePos then
+					lastSeerHidePos = rootPart.CFrame
+					task.wait(0.2)
+				end
+
+				-- Busca armário mais próximo
+				local closestLocker = nil
+				local closestDistance = math.huge
+				for _, locker in ipairs(CollectionService:GetTagged("LOCKER")) do
+					if locker:IsA("Model") then
+						local dist = (locker:GetPivot().Position - rootPart.Position).Magnitude
+						if dist < closestDistance then
+							closestLocker = locker
+							closestDistance = dist
+						end
+					end
+				end
+
+				if closestLocker then
+					character:PivotTo(closestLocker:GetPivot())
+					setStatus("Teleportado ao armário para esquivar do Seer!")
+				end
+			end
+		elseif lastSeerHidePos and hadSeerHide then
+			-- Retorna ao posto original após segurança
+			task.wait(0.5)
+			local character, _, _ = GetCharacter()
+			if character and lastSeerHidePos then
+				character:PivotTo(lastSeerHidePos)
+			end
+			hadSeerHide = false
+			lastSeerHidePos = nil
+			setStatus("Retornado à posição de hacking.")
+		end
+	end
+end)
+
+-- 5. ESP de Portas
+local doorEspConnection
+criarFrameConfig("ESP Portas (Status)", "Desativado", ftfScroll, function(btn)
+	local doorActive = (btn.Text == "Desativado")
+	btn.Text = doorActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = doorActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+	if doorActive then
+		doorEspConnection = RunService.Heartbeat:Connect(function()
+			for _, v in ipairs(Workspace:GetDescendants()) do
+				if v.Name == "SingleDoor" and v:FindFirstChild("Door") then
+					local hl = v.Door:FindFirstChild("DoorHighlight")
+					if not hl then
+						hl = Instance.new("Highlight")
+						hl.Name = "DoorHighlight"
+						hl.OutlineColor = Color3.new(1, 1, 1)
+						hl.Parent = v.Door
+					end
+					local trigger = v:FindFirstChild("DoorTrigger")
+					if trigger and trigger:FindFirstChild("ActionSign") then
+						hl.FillColor = (trigger.ActionSign.Value == 11) and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+					end
+				elseif v.Name == "DoubleDoor" then
+					local hl = v:FindFirstChild("DoorHighlight")
+					if not hl then
+						hl = Instance.new("Highlight")
+						hl.Name = "DoorHighlight"
+						hl.OutlineColor = Color3.new(1, 1, 1)
+						hl.Parent = v
+					end
+					local trigger = v:FindFirstChild("DoorTrigger")
+					if trigger and trigger:FindFirstChild("ActionSign") then
+						hl.FillColor = (trigger.ActionSign.Value == 11) and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+					end
+				end
+			end
+		end)
+	else
+		if doorEspConnection then
+			doorEspConnection:Disconnect()
+			doorEspConnection = nil
+		end
+		for _, v in ipairs(Workspace:GetDescendants()) do
+			if v.Name == "SingleDoor" and v:FindFirstChild("Door") then
+				local hl = v.Door:FindFirstChild("DoorHighlight")
+				if hl then hl:Destroy() end
+			elseif v.Name == "DoubleDoor" then
+				local hl = v:FindFirstChild("DoorHighlight")
+				if hl then hl:Destroy() end
+			end
+		end
+	end
+end)
+
+-- 6. ESP de Células de Congelamento (FreezePod)
+criarFrameConfig("Habilitar ESP (FreezePod)", "Desativado", ftfScroll, function(btn)
+	FreezePodESPActive = not FreezePodESPActive
+	if FreezePodESPActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("ESP FreezePod Ativado.")
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("ESP FreezePod Desativado.")
+	end
+	atualizarFreezePodESP()
+end)
+
+-- 7. ESP de Saídas e Dutos
+criarFrameConfig("ESP Saídas e Dutos", "Desativado", ftfScroll, function(btn)
+	ftfVisualsActive = not ftfVisualsActive
+	btn.Text = ftfVisualsActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = ftfVisualsActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+	applyFTFHighlight("ExitDoor", Color3.fromRGB(255, 255, 0))
+	applyFTFHighlight("AirVent", Color3.fromRGB(100, 100, 100))
+end)
+
+-- 8. Silenciar Fera
+criarFrameConfig("Fera Silenciosa (Stealth)", "Executar", ftfScroll, function()
+	local character, _, _ = GetCharacter()
+	if character then
+		for _, v in pairs(character:GetDescendants()) do
+			if v:IsA("Sound") and (v.Parent.Name == "Handle" or v.Parent.Name == "Hammer") then
+				v:Destroy()
+			end
+		end
+		local gemstone = character:FindFirstChild("Gemstone")
+		if gemstone then
+			local light = gemstone:FindFirstChildOfClass("PointLight", true)
+			if light then light:Destroy() end
+		end
+		setStatus("Som e Brilho da Fera removidos.")
+	end
+end)
+
+-- 9. Sprint Manual
+local sprintConnection
+criarFrameConfig("Sprint de Sobrevivência [Q]", "Desativado", ftfScroll, function(btn)
+	local sprintActive = (btn.Text == "Desativado")
+	btn.Text = sprintActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = sprintActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+	if sprintActive then
+		sprintConnection = UserInputService.InputBegan:Connect(function(input, processed)
+			if not processed and input.KeyCode == Enum.KeyCode.Q then
+				local _, _, humanoid = GetCharacter()
+				if humanoid then humanoid.WalkSpeed = 30 end
+			end
+		end)
+		local releaseConnection
+		releaseConnection = UserInputService.InputEnded:Connect(function(input)
+			if input.KeyCode == Enum.KeyCode.Q then
+				local _, _, humanoid = GetCharacter()
+				if humanoid then humanoid.WalkSpeed = 16 end
+			end
+		end)
+		pcall(function()
+			local character, _, _ = GetCharacter()
+			if character and character:FindFirstChild("PowersLocalScript") then
+				character.PowersLocalScript:Destroy()
+			end
+		end)
+	else
+		if sprintConnection then
+			sprintConnection:Disconnect()
+			sprintConnection = nil
+		end
+	end
+end)
+
+-- 10. Auto-Flop (Evitar Captura)
+local autoFlopActive = false
+criarFrameConfig("Auto-Flop (Bugar Captura)", "Desativado", ftfScroll, function(btn)
+	autoFlopActive = not autoFlopActive
+	btn.Text = autoFlopActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = autoFlopActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		if autoFlopActive then
+			local stats = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
+			if stats and stats:FindFirstChild("Ragdoll") and stats.Ragdoll.Value == true then
+				if RemoteEvent then
+					pcall(function()
+						RemoteEvent:FireServer("Flop", Vector3.new(math.random(-100, 100), 100, math.random(-100, 100)))
+					end)
+				end
+			end
+		end
+	end
+end)
+
+-- 11. Destravar Engatinhar Fera
+criarFrameConfig("Destravar Engatinhar Fera", "Executar", ftfScroll, function()
+	pcall(function()
+		LocalPlayer.TempPlayerStatsModule.DisableCrawl.Value = false
+		setStatus("Engatinhar liberado.")
+	end)
+end)
+
+-- 12. Detectar Fera
+criarFrameConfig("Quem é a Fera?", "Verificar", ftfScroll, function()
+	local beastName = "Não detectada"
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character and p.Character:FindFirstChild("BeastPowers") then
+			beastName = p.DisplayName .. " (@" .. p.Name .. ")"
+			break
+		end
+	end
+	setStatus("Fera Atual: " .. beastName)
+end)
+
+-- 13. Tempo de Queda (Nocaute) de Sobreviventes (Koala Scripts)
+local ragdollConnection
+criarFrameConfig("ESP Tempo de Queda (Nocaute)", "Desativado", ftfScroll, function(btn)
+	local active = (btn.Text == "Desativado")
+	btn.Text = active and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = active and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+	if active then
+		ragdollConnection = RunService.Heartbeat:Connect(function()
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+					local stats = p:FindFirstChild("TempPlayerStatsModule")
+					local isDowned = stats and stats:FindFirstChild("Ragdoll") and stats.Ragdoll.Value == true
+					local progress = stats and stats:FindFirstChild("ActionProgress")
+
+					local billboard = p.Character:FindFirstChild("PlrRagTimeBillboard")
+
+					if isDowned and progress then
+						if not billboard then
+							billboard = Instance.new("BillboardGui")
+							billboard.Name = "PlrRagTimeBillboard"
+							billboard.AlwaysOnTop = true
+							billboard.Size = UDim2.new(0, 180, 0, 30)
+							billboard.ExtentsOffsetWorldSpace = Vector3.new(0, 1.5, 0)
+
+							local label = Instance.new("TextLabel")
+							label.BackgroundTransparency = 1
+							label.TextColor3 = Color3.fromRGB(255, 50, 50)
+							label.Font = Enum.Font.GothamBold
+							label.Size = UDim2.new(1, 0, 1, 0)
+							label.TextScaled = true
+							label.Parent = billboard
+
+							billboard.Parent = p.Character
+						end
+						billboard.TextLabel.Text = string.format("%s | Caído: %d%%", p.DisplayName, math.floor(progress.Value * 100))
+					elseif billboard then
+						billboard:Destroy()
+					end
+				end
+			end
+		end)
+	else
+		if ragdollConnection then
+			ragdollConnection:Disconnect()
+			ragdollConnection = nil
+		end
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p.Character then
+				local billboard = p.Character:FindFirstChild("PlrRagTimeBillboard")
+				if billboard then billboard:Destroy() end
+			end
+		end
+	end
+end)
+
+-- 14. ESP de Armários (Locker ESP)
+local lockerESPActive = false
+criarFrameConfig("ESP Armários (Locker ESP)", "Desativado", ftfScroll, function(btn)
+	lockerESPActive = not lockerESPActive
+	btn.Text = lockerESPActive and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = lockerESPActive and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+
+	if lockerESPActive then
+		for _, locker in ipairs(CollectionService:GetTagged("LOCKER")) do
+			if not locker:FindFirstChild("LockerHighlight") then
+				local highlight = Instance.new("Highlight")
+				highlight.Name = "LockerHighlight"
+				highlight.FillColor = Color3.fromRGB(210, 210, 0)
+				highlight.FillTransparency = 0.6
+				highlight.OutlineColor = Color3.fromRGB(255, 255, 100)
+				highlight.OutlineTransparency = 0.2
+				highlight.Parent = locker
+			end
+		end
+	else
+		for _, locker in ipairs(CollectionService:GetTagged("LOCKER")) do
+			local hl = locker:FindFirstChild("LockerHighlight")
+			if hl then hl:Destroy() end
+		end
+	end
+end)
+
+-- ==========================================
+-- CONTROLES DE AUTO-FARM UNIFICADOS (KOALA)
+-- ==========================================
+
+-- Divisor visual
+local farmHeader = Instance.new("Frame")
+farmHeader.Size = UDim2.new(1, -10, 0, 25)
+farmHeader.BackgroundTransparency = 1
+farmHeader.Parent = ftfScroll
+
+local farmHeaderLabel = Instance.new("TextLabel")
+farmHeaderLabel.Size = UDim2.new(1, 0, 1, 0)
+farmHeaderLabel.BackgroundTransparency = 1
+farmHeaderLabel.Text = "🤖 CONFIGURAÇÕES DE AUTO-FARM"
+farmHeaderLabel.TextColor3 = Color3.fromRGB(130, 50, 200)
+farmHeaderLabel.Font = Enum.Font.GothamBold
+farmHeaderLabel.TextSize = 11
+farmHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
+farmHeaderLabel.Parent = farmHeader
+
+-- 1. Ativação Principal do Survivor Auto-Farm
+criarFrameConfig("Ativar Auto-Farm Sobrevivente", "Desativado", ftfScroll, function(btn)
+	KoalaConfig.ComputerAutoFarm = not KoalaConfig.ComputerAutoFarm
+	if KoalaConfig.ComputerAutoFarm then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Auto-Farm Survivor Ativado.")
+		DoSurvivorFarm()
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Auto-Farm Survivor Desativado.")
+	end
+end)
+
+-- 2. Nunca trocar de PC no meio do hack
+criarFrameConfig("Manter mesmo PC até o final", "Desativado", ftfScroll, function(btn)
+	KoalaConfig.KeepComputer = not KoalaConfig.KeepComputer
+	btn.Text = KoalaConfig.KeepComputer and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = KoalaConfig.KeepComputer and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+end)
+
+-- 3. Teleportar instantaneamente para PCs (Sem Tween)
+criarFrameConfig("Teleportar p/ PC (Sem Tween)", "Desativado", ftfScroll, function(btn)
+	KoalaConfig.TeleportInsteadTweenPCFarm = not KoalaConfig.TeleportInsteadTweenPCFarm
+	btn.Text = KoalaConfig.TeleportInsteadTweenPCFarm and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = KoalaConfig.TeleportInsteadTweenPCFarm and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+end)
+
+-- 4. Evasão da Fera (Esconder quando Próxima)
+criarFrameConfig("Fugir se Fera estiver Perto", "Desativado", ftfScroll, function(btn)
+	KoalaConfig.HideBeastNear = not KoalaConfig.HideBeastNear
+	btn.Text = KoalaConfig.HideBeastNear and "Ativado" or "Desativado"
+	btn.BackgroundColor3 = KoalaConfig.HideBeastNear and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+end)
+
+-- 5. TextBox para Ajuste de Velocidade de Tween (Aproveitando o design padrão do Spider)
+local tweenSpeedFrame = Instance.new("Frame")
+tweenSpeedFrame.Size = UDim2.new(1, -10, 0, 42)
+tweenSpeedFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+tweenSpeedFrame.BorderSizePixel = 0
+tweenSpeedFrame.Parent = ftfScroll
+
+do
+	local fCorner = Instance.new("UICorner")
+	fCorner.CornerRadius = UDim.new(0, 6)
+	fCorner.Parent = tweenSpeedFrame
+
+	local fStroke = Instance.new("UIStroke")
+	fStroke.Color = Color3.fromRGB(32, 32, 40)
+	fStroke.Thickness = 1
+	fStroke.Parent = tweenSpeedFrame
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.6, 0, 1, 0)
+	label.Position = UDim2.new(0, 12, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = "Velocidade do Tween de Farm:"
+	label.TextColor3 = Color3.fromRGB(235, 235, 240)
+	label.Font = Enum.Font.GothamMedium
+	label.TextSize = 11
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = tweenSpeedFrame
+
+	local input = Instance.new("TextBox")
+	input.Size = UDim2.new(0.26, 0, 0.65, 0)
+	input.Position = UDim2.new(0.7, 0, 0.175, 0)
+	input.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+	input.TextColor3 = Color3.fromRGB(255, 255, 255)
+	input.Text = tostring(KoalaConfig.FarmTweenSpeed)
+	input.Font = Enum.Font.GothamBold
+	input.TextSize = 10
+	input.BorderSizePixel = 0
+	input.Parent = tweenSpeedFrame
+
+	local inputCorner = Instance.new("UICorner")
+	inputCorner.CornerRadius = UDim.new(0, 5)
+	inputCorner.Parent = input
+
+	input.FocusLost:Connect(function()
+		local val = tonumber(input.Text)
+		if val then
+			KoalaConfig.FarmTweenSpeed = math.clamp(val, 5, 50)
+			setStatus("Velocidade do Farm definida para " .. KoalaConfig.FarmTweenSpeed)
+		else
+			input.Text = tostring(KoalaConfig.FarmTweenSpeed)
+		end
+	end)
+end
+
+ftfLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	ftfScroll.CanvasSize = UDim2.new(0, 0, 0, ftfLayout.AbsoluteContentSize.Y + 20)
+end)
+
+-- ==========================================
+-- TAB: UTILITÁRIOS
 -- ==========================================
 local utilsScroll = Instance.new("ScrollingFrame")
 utilsScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -1539,46 +2966,73 @@ utilsScroll.ScrollBarThickness = 4
 utilsScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
 utilsScroll.Parent = utilsPage
 
-local utilsLayout = Instance.new("UIListLayout")
-utilsLayout.Padding = UDim.new(0, 6)
-utilsLayout.Parent = utilsScroll
+local utilsScrollLayout = Instance.new("UIListLayout")
+utilsScrollLayout.Padding = UDim.new(0, 10)
+utilsScrollLayout.Parent = utilsScroll
 
-criarFrameConfig("Evitar Desconexão (Anti-AFK)", "Desativado", utilsScroll, function(btn)
-	antiAfkActive = not antiAfkActive
-	if antiAfkActive then
+-- Restaurar Câmera
+criarFrameConfig("Forçar Câmera Custom", "Resetar", utilsScroll, function()
+	local camera = workspace.CurrentCamera
+	local _, _, humanoid = GetCharacter()
+	if camera and humanoid then
+		camera.CameraType = Enum.CameraType.Custom
+		camera.CameraSubject = humanoid
+		setStatus("Câmera resetada com sucesso.")
+	else
+		setStatus("Erro: Componentes inacessíveis.")
+	end
+end)
+
+-- Jump Infinito
+criarFrameConfig("Habilitar Pulo Infinito", "Desativado", moveScroll, function(btn)
+	InfiniteJumpActive = not InfiniteJumpActive
+	if InfiniteJumpActive then
 		btn.Text = "Ativado"
 		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
 		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		antiAfkConnection = LocalPlayer.Idled:Connect(function()
-			local VirtualUser = game:GetService("VirtualUser")
-			VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-			task.wait(0.5)
-			VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+		setStatus("Pulo Infinito Ativado.")
+
+		jumpConnection = UserInputService.JumpRequest:Connect(function()
+			local _, _, humanoid = GetCharacter()
+			if humanoid then
+				humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
 		end)
 	else
 		btn.Text = "Desativado"
 		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-		if antiAfkConnection then
-			antiAfkConnection:Disconnect()
-			antiAfkConnection = nil
+		setStatus("Pulo Infinito Desativado.")
+		if jumpConnection then
+			jumpConnection:Disconnect()
+			jumpConnection = nil
 		end
 	end
 end)
 
-criarFrameConfig("Sair se Moderador Entrar", "Desativado", utilsScroll, function(btn)
-	KickOnModerator = not KickOnModerator
-	btn.Text = KickOnModerator and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = KickOnModerator and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
+-- Otimizador Anti-Lag
+criarFrameConfig("Otimizar Gráficos (Anti-Lag)", "Executar", visualScroll, function()
+	local alterados = 0
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") then
+			obj.Material = Enum.Material.SmoothPlastic
+			alterados = alterados + 1
+		elseif obj:IsA("Decal") or obj:IsA("Texture") then
+			obj:Destroy()
+			alterados = alterados + 1
+		elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+			obj.Enabled = false
+			alterados = alterados + 1
+		end
+	end
+	Lighting.GlobalShadows = false
+	setStatus("Limpeza concluída. " .. alterados .. " elementos otimizados.")
 end)
 
-criarFrameConfig("Alerta Se Moderador Entrar", "Desativado", utilsScroll, function(btn)
-	AlertModerator = not AlertModerator
-	btn.Text = AlertModerator and "Ativado" or "Desativado"
-	btn.BackgroundColor3 = AlertModerator and Color3.fromRGB(130, 50, 200) or Color3.fromRGB(30, 30, 38)
-end)
-
-criarFrameConfig("Reentrar no Servidor (Rejoin)", "Executar", utilsScroll, function()
+-- Rejoin (Reconectar)
+criarFrameConfig("Reentrar no Servidor (Rejoin)", "Reconectar", utilsScroll, function()
+	setStatus("Tentando reconectar...")
+	task.wait(0.5)
 	if #Players:GetPlayers() <= 1 then
 		TeleportService:Teleport(game.PlaceId, LocalPlayer)
 	else
@@ -1586,22 +3040,205 @@ criarFrameConfig("Reentrar no Servidor (Rejoin)", "Executar", utilsScroll, funct
 	end
 end)
 
-criarFrameConfig("Aumentar Hitbox (Como Fera)", "Executar", utilsScroll, function()
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Torso") then
-			p.Character.Torso.Size = Vector3.new(6, 6, 6)
-			p.Character.Torso.CanCollide = false
+-- Anti-AFK
+criarFrameConfig("Evitar Desconexão (Anti-AFK)", "Desativado", utilsScroll, function(btn)
+	antiAfkActive = not antiAfkActive
+	if antiAfkActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Anti-AFK Ativado.")
+
+		antiAfkConnection = LocalPlayer.Idled:Connect(function()
+			local VirtualUser = game:GetService("VirtualUser")
+			VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+			task.wait(1)
+			VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+		end)
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Anti-AFK Desativado.")
+
+		if antiAfkConnection then
+			antiAfkConnection:Disconnect()
+			antiAfkConnection = nil
 		end
 	end
-	setStatus("Tamanho das Hitboxes de alvos expandido.")
 end)
 
-utilsLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	utilsScroll.CanvasSize = UDim2.new(0, 0, 0, utilsLayout.AbsoluteContentSize.Y + 10)
+-- Click TP Tool
+criarFrameConfig("Ferramenta Click TP", "Obter Tool", moveScroll, function()
+	local mochila = LocalPlayer:WaitForChild("Backpack")
+	local character, _, _ = GetCharacter()
+
+	if mochila:FindFirstChild("Teleporte Tool") or (character and character:FindFirstChild("Teleporte Tool")) then
+		setStatus("Você já possui esta ferramenta.")
+		return
+	end
+
+	local mouse = LocalPlayer:GetMouse()
+	local tool = Instance.new("Tool")
+	tool.Name = "Teleporte Tool"
+	tool.RequiresHandle = false
+
+	tool.Activated:Connect(function()
+		local _, rootPart, _ = GetCharacter()
+		if rootPart then
+			rootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+			setStatus("Teleportado via clique.")
+		end
+	end)
+
+	tool.Parent = mochila
+	setStatus("Ferramenta de teleporte adicionada à mochila.")
+end)
+
+-- Buscar Servidor Vazio
+criarFrameConfig("Buscar Servidor Vazio", "Executar", utilsScroll, function()
+	setStatus("Buscando servidores vazios...")
+	local HttpService = game:GetService("HttpService")
+	local TeleportService = game:GetService("TeleportService")
+
+	task.spawn(function()
+		pcall(function()
+			local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+			local servers = HttpService:JSONDecode(game:HttpGet(url))
+			for i = #servers.data, 1, -1 do
+				local server = servers.data[i]
+				if server.playing > 0 and server.playing <= 3 and server.id ~= game.JobId then
+					TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
+					return
+				end
+			end
+			setStatus("Nenhum servidor vazio encontrado.")
+		end)
+	end)
+end)
+
+-- Gravidade de Lua
+local originalGravity = Workspace.Gravity
+criarFrameConfig("Gravidade de Lua (Baixa)", "Desativado", moveScroll, function(btn)
+	if Workspace.Gravity == originalGravity then
+		Workspace.Gravity = 30
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Gravidade local reduzida.")
+	else
+		Workspace.Gravity = originalGravity
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Gravidade padrão restaurada.")
+	end
+end)
+
+-- Zoom Infinito
+local infiniteZoomActive = false
+local originalMaxZoom = LocalPlayer.CameraMaxZoomDistance
+criarFrameConfig("Distanciamento de Zoom Livre", "Desativado", utilsScroll, function(btn)
+	infiniteZoomActive = not infiniteZoomActive
+	if infiniteZoomActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Zoom máximo destravado.")
+		LocalPlayer.CameraMaxZoomDistance = 999999
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Zoom original restaurado.")
+		LocalPlayer.CameraMaxZoomDistance = originalMaxZoom
+	end
+end)
+
+-- Anti-Void (Salva-vidas)
+local antiVoidActive = false
+local lastSafeCFrame = CFrame.new(0, 50, 0)
+local antiVoidConnection
+
+criarFrameConfig("Salva-Vidas (Anti-Void)", "Desativado", moveScroll, function(btn)
+	antiVoidActive = not antiVoidActive
+	if antiVoidActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Anti-Void ativado.")
+
+		antiVoidConnection = RunService.Heartbeat:Connect(function()
+			local _, rootPart, _ = GetCharacter()
+			if rootPart then
+				if rootPart.Position.Y > -50 then
+					lastSafeCFrame = rootPart.CFrame
+				else
+					if rootPart.Position.Y < -100 then
+						rootPart.AssemblyLinearVelocity = Vector3.zero
+						rootPart.CFrame = lastSafeCFrame + Vector3.new(0, 5, 0)
+						setStatus("Resgatado do vácuo.")
+					end
+				end
+			end
+		end)
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Anti-Void desativado.")
+		if antiVoidConnection then
+			antiVoidConnection:Disconnect()
+			antiVoidConnection = nil
+		end
+	end
+end)
+
+-- Glide (Deslizar no ar)
+local glideActive = false
+local glideConnection
+criarFrameConfig("Deslizar no Ar (Glide)", "Desativado", moveScroll, function(btn)
+	glideActive = not glideActive
+	if glideActive then
+		btn.Text = "Ativado"
+		btn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		setStatus("Modo Planador Ativado.")
+
+		glideConnection = RunService.Heartbeat:Connect(function()
+			local _, rootPart, humanoid = GetCharacter()
+			if rootPart and humanoid and humanoid:GetState() == Enum.HumanoidStateType.Freefall then
+				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+					if rootPart.AssemblyLinearVelocity.Y < -5 then
+						rootPart.AssemblyLinearVelocity = Vector3.new(rootPart.AssemblyLinearVelocity.X, -5, rootPart.AssemblyLinearVelocity.Z)
+					end
+				end
+			end
+		end)
+	else
+		btn.Text = "Desativado"
+		btn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+		setStatus("Modo Planador Desativado.")
+		if glideConnection then
+			glideConnection:Disconnect()
+			glideConnection = nil
+		end
+	end
+end)
+
+-- Destravar Cursor (Mouse Unlock)
+criarFrameConfig("Destravar Cursor (Mouse Unlock) [Alt]", "Desativado", utilsScroll, function(btn)
+	mouseUnlockBtn = btn
+	toggleMouseUnlock()
+end)
+
+utilsScrollLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	utilsScroll.CanvasSize = UDim2.new(0, 0, 0, utilsScrollLayout.AbsoluteContentSize.Y + 15)
 end)
 
 -- ==========================================
--- CONTEÚDO DA ABA: INSPETOR DE BLOCOS (REAL-TIME DEBUG)
+-- TAB: INSPETOR (REAL-TIME PERFORMANCE & DEBUG)
 -- ==========================================
 local insScroll = Instance.new("ScrollingFrame")
 insScroll.Size = UDim2.new(1, 0, 1, 0)
@@ -1612,12 +3249,12 @@ insScroll.ScrollBarImageColor3 = Color3.fromRGB(130, 50, 200)
 insScroll.Parent = inspectorPage
 
 local insLayout = Instance.new("UIListLayout")
-insLayout.Padding = UDim.new(0, 6)
+insLayout.Padding = UDim.new(0, 8)
 insLayout.Parent = insScroll
 
 local function criarLinhaInfo(label, valorInicial)
 	local f = Instance.new("Frame")
-	f.Size = UDim2.new(1, -10, 0, 26)
+	f.Size = UDim2.new(1, -10, 0, 28)
 	f.BackgroundColor3 = Color3.fromRGB(25, 25, 32)
 	f.BorderSizePixel = 0
 	f.Parent = insScroll
@@ -1658,26 +3295,57 @@ local iNome = criarLinhaInfo("Nome", "---")
 local iClasse = criarLinhaInfo("Classe", "---")
 local iDist = criarLinhaInfo("Distância", "0m")
 local iPos = criarLinhaInfo("Posição", "---")
-local iFPS = criarLinhaInfo("Performance", "---")
-local iPing = criarLinhaInfo("Latência", "0ms")
+local iTamanho = criarLinhaInfo("Tamanho", "---")
+local iFilhos = criarLinhaInfo("Filhos/Desc.", "0/0")
+local iFPS = criarLinhaInfo("Performance (FPS)", "60")
+local iPing = criarLinhaInfo("Latência (Ping)", "0ms")
 
 local copyBtn = Instance.new("TextButton")
 copyBtn.Size = UDim2.new(1, -10, 0, 30)
 copyBtn.BackgroundColor3 = Color3.fromRGB(130, 50, 200)
-copyBtn.Text = "Copiar Caminho do Objeto"
+copyBtn.Text = "Copiar Caminho Completo"
 copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 copyBtn.Font = Enum.Font.GothamBold
 copyBtn.TextSize = 11
 copyBtn.Parent = insScroll
 
 local copyCorner = Instance.new("UICorner")
-copyCorner.CornerRadius = UDim.new(0, 5)
+copyCorner.CornerRadius = UDim.new(0, 6)
 copyCorner.Parent = copyBtn
 
 copyBtn.MouseButton1Click:Connect(function()
-	if SelectedInstance and setclipboard then
-		setclipboard(SelectedInstance:GetFullName())
-		setStatus("Caminho copiado para a área de transferência!")
+	if SelectedInstance then
+		local path = SelectedInstance:GetFullName()
+		if setclipboard then
+			setclipboard(path)
+			setStatus("Caminho copiado para a área de transferência!")
+		else
+			iNome.Text = "ERRO: Sem suporte a clipboard"
+		end
+	end
+end)
+
+local delBtn = Instance.new("TextButton")
+delBtn.Size = UDim2.new(1, -10, 0, 30)
+delBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+delBtn.Text = "Deletar Objeto Selecionado"
+delBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+delBtn.Font = Enum.Font.GothamBold
+delBtn.TextSize = 11
+delBtn.Parent = insScroll
+
+local delCorner = Instance.new("UICorner")
+delCorner.CornerRadius = UDim.new(0, 6)
+delCorner.Parent = delBtn
+
+delBtn.MouseButton1Click:Connect(function()
+	if SelectedInstance then
+		local n = SelectedInstance.Name
+		SelectedInstance:Destroy()
+		SelectedInstance = nil
+		setStatus("Objeto " .. n .. " removido localmente.")
+	else
+		setStatus("Erro: Selecione um item usando o Inspetor [F4].")
 	end
 end)
 
@@ -1689,390 +3357,6 @@ local function ResetHighlight()
 		HighlightEffect.Parent = nil
 	end
 end
-
-insLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	insScroll.CanvasSize = UDim2.new(0, 0, 0, insLayout.AbsoluteContentSize.Y + 15)
-end)
-
--- ==========================================
--- SCRIPT DE AUTO FARM (LOGICA PORTADA DO KOALA)
--- ==========================================
-
-function DoSurvivorFarm()
-	if onsurvivorfarm then return end
-	
-	local function PlayerReady()
-		if not TempPlayerStatsModule or TempPlayerStatsModule.IsBeast.Value or TempPlayerStatsModule.Health.Value <= 0 or not IsThereChar() then
-			return false
-		end
-		return true
-	end
-
-	local function TaskGood()
-		local status = game.ReplicatedStorage:FindFirstChild("GameStatus")
-		if not status or string.find(string.lower(status.Value), "game over") or string.find(string.lower(status.Value), "intermission") or not PlayerReady() then
-			return false
-		end
-		return true
-	end
-
-	local function GetMapObjects()
-		local Result = { Computers = {}, FreezePods = {}, ExitDoors = {} }
-		local currentMap = game.ReplicatedStorage:FindFirstChild("CurrentMap")
-		if currentMap and currentMap.Value then
-			for _, v in ipairs(currentMap.Value:GetChildren()) do
-				if v.Name == "ComputerTable" then
-					table.insert(Result.Computers, v)
-				elseif v.Name == "FreezePod" then
-					table.insert(Result.FreezePods, v)
-				elseif v.Name == "ExitDoor" then
-					table.insert(Result.ExitDoors, v)
-				end
-			end
-		end
-		return Result
-	end
-
-	local MapObjects = GetMapObjects()
-	local IsFreeing = false
-	local HadSaved = false
-	local GoTween
-	local CheckingPods = false
-
-	local function FreeAllPods(ToGo)
-		if CheckingPods then return end
-		CheckingPods = true
-		for _, v in ipairs(MapObjects.FreezePods) do
-			if TaskGood() and v:FindFirstChild("PodTrigger") and v.PodTrigger.ActionSign.Value == 31 and (not FreezePodOnce or not HadSaved) then
-				IsFreeing = true
-				GoTween(v.PodTrigger, true, TeleportToFreezePod)
-				repeat
-					task.wait()
-					if not bnhide and v:FindFirstChild("PodTrigger") and IsThereChar() then
-						LocalPlayer.Character:PivotTo(v.PodTrigger.CFrame)
-						game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.PodTrigger.Event)
-						game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
-					end
-				until not v:FindFirstChild("PodTrigger") or v.PodTrigger.ActionSign.Value ~= 31 or bnhideelapse >= CampFreezePodOut
-				
-				if bnhideelapse >= CampFreezePodOut and IsThereChar() then
-					lpos = LocalPlayer.Character:GetPivot()
-				end
-				if v:FindFirstChild("PodTrigger") and v.PodTrigger.ActionSign.Value ~= 31 then
-					HadSaved = true
-				end
-				if ToGo then
-					GoTween(ToGo, true, TeleportToFreezePod)
-				end
-				IsFreeing = false
-			end
-		end
-		CheckingPods = false
-	end
-
-	GoTween = function(Part, IsPod, TeleportInstead, TeleportDelay)
-		if not TeleportInstead and IsThereChar() then
-			local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - Part.Position).Magnitude
-			local NewTween = TweenService:Create(
-				LocalPlayer.Character.HumanoidRootPart,
-				TweenInfo.new(Distance / FarmTweenSpeed, Enum.EasingStyle.Linear),
-				{ CFrame = Part.CFrame }
-			)
-			NewTween:Play()
-
-			repeat
-				task.wait()
-				if bnhide and IsThereChar() then
-					NewTween:Pause()
-					lpos = LocalPlayer.Character.HumanoidRootPart.CFrame
-				elseif NewTween.PlaybackState == Enum.PlaybackState.Paused then
-					NewTween:Play()
-				end
-
-				if bnhideelapse >= CampTweenAnimOut then
-					lpos = Part.CFrame
-					bnhideelapse = 0
-					NewTween:Cancel()
-				elseif not TaskGood() then
-					NewTween:Cancel()
-				elseif not IsFreeing and not IsPod and not CheckingPods then
-					task.spawn(function() FreeAllPods(Part) end)
-				elseif IsFreeing and not IsPod then
-					NewTween:Cancel()
-				end
-			until NewTween.PlaybackState == Enum.PlaybackState.Completed or NewTween.PlaybackState == Enum.PlaybackState.Cancelled
-		end
-		if TeleportDelay and TeleportInstead and IsThereChar() then
-			task.wait(TeleportDelay)
-		end
-		if IsThereChar() then
-			LocalPlayer.Character:PivotTo(Part.CFrame)
-		end
-	end
-
-	local OnComputer = false
-	local ChosenComputer = nil
-	local ComputerBanList = {}
-	local CurrentComputer = nil
-	local FirstPC = true
-	local LastPC = nil
-
-	local function GetComputer(Computer)
-		if TaskGood() and Computer.Screen.BrickColor ~= BrickColor.new("Dark green") and not OnComputer then
-			OnComputer = true
-			local Triggers = {
-				Computer:FindFirstChild("ComputerTrigger1"),
-				Computer:FindFirstChild("ComputerTrigger2"),
-				Computer:FindFirstChild("ComputerTrigger3"),
-			}
-
-			local hadteleported = false
-			for _, v in ipairs(Triggers) do
-				if v and TaskGood() and v.ActionSign.Value == 20 and Computer.Screen.BrickColor ~= BrickColor.new("Dark green") and ChosenComputer == Computer then
-					local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - v.Position).Magnitude
-
-					if (Distance / FarmTweenSpeed < WaitTweenFast) and not FirstPC and not TeleportInsteadTweenPCFarm and LastPC ~= Computer then
-						task.wait(WaitTweenFast - (Distance / FarmTweenSpeed))
-					end
-
-					repeat task.wait() until not TaskGood() or bnhide == false or bnhideelapse >= CampHackOut
-					if bnhideelapse >= CampHackOut and IsThereChar() then
-						lpos = LocalPlayer.Character:GetPivot()
-					end
-
-					if hadteleported or FirstPC or LastPC == Computer then
-						GoTween(v, nil, TeleportInsteadTweenPCFarm)
-					else
-						local GotDelay = WaitTweenFast
-						if UseMinimalTeleport then
-							local NewDelay = Distance / StudsPerDelay
-							GotDelay = math.clamp(NewDelay, math.min(MinimumDuration, WaitTweenFast), WaitTweenFast)
-						end
-						GoTween(v, nil, TeleportInsteadTweenPCFarm, GotDelay)
-					end
-					hadteleported = true
-					FirstPC = false
-					LastPC = Computer
-
-					if Computer.Screen.BrickColor == BrickColor.new("Dark green") then CurrentComputer = nil; OnComputer = false; return end
-					if not TaskGood() then CurrentComputer = nil; OnComputer = false; return end
-
-					local Tries = 0
-					repeat
-						task.wait()
-						FreeAllPods(v)
-						if TaskGood() and not bnhide and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" and IsThereChar() then
-							Tries = Tries + 1
-							LocalPlayer.Character:PivotTo(v.CFrame)
-							game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
-							game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
-							task.wait(0.5)
-						elseif TaskGood() and not bnhide and not IsFreeing then
-							CurrentComputer = Computer
-							Tries = 0
-							if AutoHideHack and IsThereChar() then
-								LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
-								game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
-								game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
-							end
-						end
-						if bnhideelapse >= CampHackOut and not IsFreeing then
-							ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
-							if IsThereChar() then lpos = LocalPlayer.Character:GetPivot() end
-							OnComputer = false
-							CurrentComputer = nil
-							bnhideelapse = 0
-							return
-						end
-					until not TaskGood() or Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil)
-					
-					if TaskGood() and TeleportInsteadTweenPCFarm and IsThereChar() then
-						game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", false, v.Event)
-						game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", false)
-						LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
-					end
-				end
-			end
-			CurrentComputer = nil
-			OnComputer = false
-		end
-	end
-
-	local function Run()
-		local CancelComputers = false
-		local LeastTriggers = 4
-		local Closest = math.huge
-		local ComputersLeft = 0
-
-		task.spawn(function()
-			while TaskGood() do
-				task.wait()
-				ComputersLeft = 0
-				LeastTriggers = 4
-				Closest = math.huge
-
-				for _, v in ipairs(MapObjects.Computers) do
-					if v.Screen.BrickColor ~= BrickColor.new("Dark green") then
-						ComputersLeft = ComputersLeft + 1
-					end
-
-					local FoundV = false
-					for i2, v2 in pairs(ComputerBanList) do
-						if v2 == v then FoundV = true end
-					end
-
-					if v.Screen.BrickColor ~= BrickColor.new("Dark green") and not FoundV and IsThereChar() then
-						local Triggers = { v:FindFirstChild("ComputerTrigger3"), v:FindFirstChild("ComputerTrigger2"), v:FindFirstChild("ComputerTrigger1") }
-						local Distance = (Triggers[1].Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-						local AmtTriggers = 3
-
-						for _, v2 in ipairs(Triggers) do
-							if v2 and v2.ActionSign.Value ~= 20 then AmtTriggers = AmtTriggers - 1 end
-						end
-
-						if ((AmtTriggers >= 1 or AmtTriggers == -1) and AmtTriggers <= LeastTriggers) then
-							if AmtTriggers == LeastTriggers and Distance > Closest then continue end
-							ChosenComputer = v
-							LeastTriggers = AmtTriggers
-							Closest = Distance
-						end
-					end
-				end
-			end
-		end)
-
-		repeat
-			task.wait(0.5)
-			if ChosenComputer and not OnComputer then
-				GetComputer(ChosenComputer)
-			elseif ComputersLeft < 1 then
-				CancelComputers = true
-			end
-		until not TaskGood() or CancelComputers
-
-		if not TaskGood() or ExitCancel then return end
-
-		-- Escape Automático
-		repeat
-			task.wait()
-			for _, v in ipairs(MapObjects.ExitDoors) do
-				if not TaskGood() then continue end
-				if v:FindFirstChild("ExitDoorTrigger") then
-					GoTween(v.ExitDoorTrigger, nil, TeleportToExitDoor)
-					repeat
-						task.wait()
-						if v:FindFirstChild("ExitDoorTrigger") and v.ExitDoorTrigger.ActionSign.Value ~= 0 and not bnhide and IsThereChar() then
-							LocalPlayer.Character:PivotTo(v.ExitDoorTrigger.CFrame * CFrame.new(0, v.ExitDoorTrigger.Size.Y / 2, 0))
-							game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.ExitDoorTrigger.Event)
-							game.ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
-							task.wait(0.5)
-						end
-					until not TaskGood() or not v:FindFirstChild("ExitDoorTrigger") or bnhideelapse >= CampEscapeOut
-				end
-				if TaskGood() and IsThereChar() then
-					task.wait(0.5)
-					GoTween(v.ExitArea, nil, TeleportToExitDoor)
-				end
-			end
-		until not TaskGood()
-	end
-
-	local NewFarmTask = coroutine.create(function()
-		if PlayerReady() and not onsurvivorfarm then
-			onsurvivorfarm = true
-			local Success, Result = pcall(Run)
-			if not Success then setStatus("Erro Farm: " .. tostring(Result)) end
-			task.wait(1)
-			TPPlayerSpawn()
-			onsurvivorfarm = false
-		end
-	end)
-	coroutine.resume(NewFarmTask)
-end
-
-function DoBeastFarm()
-	if OnBeastFarm then return end
-	
-	local function IsTaskGood()
-		local status = game.ReplicatedStorage:FindFirstChild("GameStatus")
-		if not status or string.find(string.lower(status.Value), "game over") or string.find(string.lower(status.Value), "intermission") then
-			return false
-		end
-		return true
-	end
-
-	local function LerpToPart(Part, Threshold, WaitUntilCompletion)
-		if BeastInstantTP and IsThereChar() then
-			LocalPlayer.Character:PivotTo(Part.CFrame)
-			return
-		end
-		if not IsThereChar() then return end
-
-		local LerpCompleted = false
-		local Connection
-		Connection = RunService.RenderStepped:Connect(function(dt)
-			if not Part or not Part:IsDescendantOf(Workspace) or not IsTaskGood() or not IsThereChar() then
-				LerpCompleted = true
-				Connection:Disconnect()
-				return
-			end
-
-			local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - Part.Position).Magnitude
-			if not LerpCompleted then
-				local Direction = Part.Position - LocalPlayer.Character.HumanoidRootPart.Position
-				local Alpha = Direction.Unit * math.min(BeastFarmTweenSpeed * dt, Distance)
-				LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame + Alpha
-			end
-
-			if Distance <= Threshold then
-				LerpCompleted = true
-				Connection:Disconnect()
-			end
-		end)
-
-		if WaitUntilCompletion then
-			repeat task.wait() until LerpCompleted
-		end
-	end
-
-	local function Run()
-		local currentMap = game.ReplicatedStorage:FindFirstChild("CurrentMap")
-		if not currentMap or not currentMap.Value then return end
-
-		while IsTaskGood() do
-			task.wait(0.5)
-			for _, v in ipairs(Players:GetPlayers()) do
-				if v ~= LocalPlayer and v:FindFirstChild("TempPlayerStatsModule") and v.TempPlayerStatsModule.Health.Value > 0 and IsThereChar(v) and IsThereChar() then
-					LerpToPart(v.Character.HumanoidRootPart, BeastThreshold, true)
-					repeat
-						task.wait()
-						if IsThereChar(v) and IsThereChar() then
-							LocalPlayer.Character:PivotTo(v.Character.HumanoidRootPart.CFrame)
-							if LocalPlayer.Character:FindFirstChild("Hammer") then
-								LocalPlayer.Character.Hammer.HammerEvent:FireServer("HammerHit", v.Character.Torso)
-							end
-						end
-					until not IsThereChar(v) or v.TempPlayerStatsModule.Ragdoll.Value == true
-				end
-			end
-		end
-	end
-
-	if IsThereChar() and TempPlayerStatsModule and TempPlayerStatsModule.IsBeast.Value then
-		local NewFarmTask = coroutine.create(function()
-			OnBeastFarm = true
-			pcall(Run)
-			task.wait(2)
-			TPPlayerSpawn()
-			OnBeastFarm = false
-		end)
-		coroutine.resume(NewFarmTask)
-	end
-end
-
--- ==========================================
--- LOOP PRINCIPAL E SINK DE CONFIGURAÇÕES (UPDATE TICK)
--- ==========================================
 
 RunService.RenderStepped:Connect(function()
 	local now = tick()
@@ -2088,135 +3372,67 @@ RunService.RenderStepped:Connect(function()
 	local ping = tonumber(string.format("%.0f", LocalPlayer:GetNetworkPing() * 1000))
 	iPing.Text = ping .. " ms"
 
-	-- Sistema do Inspetor
-	if InspectorActive then
-		iStatus.Text = "ESCANEANDO..."
-		iStatus.TextColor3 = Color3.fromRGB(50, 255, 100)
-		local target = Mouse.Target
-		if target then
-			if target ~= SelectedInstance then
-				ResetHighlight()
-				SelectedInstance = target
-				if target:IsA("BasePart") then
-					OriginalColor = target.Color
-					target.Color = Color3.fromRGB(0, 100, 255)
-				end
-				HighlightEffect.Parent = target
-			end
-			iNome.Text = target.Name
-			iClasse.Text = target.ClassName
-			if target:IsA("BasePart") then
-				iPos.Text = string.format("%.1f, %.1f, %.1f", target.Position.X, target.Position.Y, target.Position.Z)
-				local _, rootPart = GetCharacter()
-				if rootPart then
-					iDist.Text = math.floor((target.Position - rootPart.Position).Magnitude) .. "m"
-				end
-			end
-		end
-	else
+	if not InspectorActive then 
 		iStatus.Text = "DESATIVADO"
 		iStatus.TextColor3 = Color3.fromRGB(255, 50, 50)
+		return 
 	end
 
-	-- Lógica de Monitoramento das Tags de Personagem
-	if IsThereChar() then
-		TempPlayerStatsModule = LocalPlayer:FindFirstChild("TempPlayerStatsModule")
-		if TempPlayerStatsModule then
-			-- Anti-Fail Hack (Sempre acertar os minigames)
-			if AntiPCError then
-				ReplicatedStorage.RemoteEvent:FireServer("SetPlayerMinigameResult", true)
-			end
-			-- Anti-Ragdoll
-			if RagdollMovement and TempPlayerStatsModule:FindFirstChild("Ragdoll") then
-				TempPlayerStatsModule.Ragdoll.Value = false
-			end
-			-- Forçar Terceira Pessoa na Fera
-			if Beast3rdPerson and TempPlayerStatsModule.IsBeast.Value then
-				LocalPlayer.CameraMode = Enum.CameraMode.Classic
-			end
-		end
-	end
+	iStatus.Text = "ESCANEANDO..."
+	iStatus.TextColor3 = Color3.fromRGB(50, 255, 100)
 
-	-- Evasão de Seer
-	local screenGuiObj = PlayerGui:FindFirstChild("ScreenGui")
-	local warningFrame = screenGuiObj and screenGuiObj:FindFirstChild("WarningFrame")
-	if warningFrame and warningFrame.Visible and AutoHideFromSeer and IsThereChar() then
-		if not HadSeerHide then
-			HadSeerHide = true
-			local _, root = GetCharacter()
-			LastSeerHidePos = root.CFrame
-			local ClosestLocker
-			local ClosestDistance = math.huge
-			for _, locker in ipairs(CollectionService:GetTagged("LOCKER")) do
-				if locker:IsA("Model") then
-					local dist = (locker:GetPivot().Position - root.Position).Magnitude
-					if dist < ClosestDistance then
-						ClosestLocker = locker
-						ClosestDistance = dist
-					end
-				end
+	local target = Mouse.Target
+	if target then
+		if target ~= SelectedInstance then
+			ResetHighlight()
+			SelectedInstance = target
+			if target:IsA("BasePart") then
+				OriginalColor = target.Color
+				target.Color = Color3.fromRGB(0, 100, 255)
 			end
-			if ClosestLocker then
-				LocalPlayer.Character:PivotTo(ClosestLocker:GetPivot())
+			HighlightEffect.Parent = target
+		end
+
+		iNome.Text = target.Name
+		iClasse.Text = target.ClassName
+
+		if target:IsA("BasePart") then
+			iPos.Text = string.format("%.1f, %.1f, %.1f", target.Position.X, target.Position.Y, target.Position.Z)
+			iTamanho.Text = string.format("%.1f x %.1f x %.1f", target.Size.X, target.Size.Y, target.Size.Z)
+
+			local _, rootPart, _ = GetCharacter()
+			if rootPart then
+				local dist = (target.Position - rootPart.Position).Magnitude
+				iDist.Text = math.floor(dist) .. "m"
+			else
+				iDist.Text = "N/A"
 			end
+		else
+			iPos.Text = "N/A"
+			iTamanho.Text = "N/A"
+			iDist.Text = "N/A"
 		end
-	elseif LastSeerHidePos and HadSeerHide and IsThereChar() then
-		HadSeerHide = false
-		if ReturnFromHideSeer then
-			LocalPlayer.Character:PivotTo(LastSeerHidePos)
-		end
-		LastSeerHidePos = nil
+
+		iFilhos.Text = #target:GetChildren() .. " / " .. #target:GetDescendants()
+	else
+		ResetHighlight()
+		SelectedInstance = nil
 	end
 end)
 
--- Loop de Spam do Soundboard
-task.spawn(function()
-	while true do
-		task.wait(math.clamp(1 - (STSpamPercentage / 100), 0.05, 1))
-		if STSpamCorrect then SoundService.CorrectSound:Play() end
-		if STSpamWarning then SoundService.WarningSound:Play() end
-		if STSpamExitsUnlock and ReplicatedStorage:FindFirstChild("CurrentMap") and ReplicatedStorage.CurrentMap.Value then
-			local map = ReplicatedStorage.CurrentMap.Value
-			if map:FindFirstChild("FacilitySiren") and map.FacilitySiren:FindFirstChild("SoundExitsUnlock") then
-				map.FacilitySiren.SoundExitsUnlock:Play()
-			end
-		end
-	end
-end)
-
--- Loop Crawl Hack (Acelerar Hack de Computador)
-task.spawn(function()
-	while true do
-		task.wait(HackCrawlDelay)
-		if SpeedHackCrawlActive and IsThereChar() and TempPlayerStatsModule then
-			local anim = TempPlayerStatsModule:FindFirstChild("CurrentAnimation")
-			if anim and anim.Value == "Typing" then
-				local crawlAsset = ReplicatedStorage:FindFirstChild("Animations") and ReplicatedStorage.Animations:FindFirstChild("AnimCrawl")
-				local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-				if crawlAsset and humanoid then
-					local animTrack = humanoid:LoadAnimation(crawlAsset)
-					ReplicatedStorage.RemoteEvent:FireServer("Input", "Crawl", true)
-					humanoid.HipHeight = -2
-					animTrack:Play(0.1, 1, 0)
-					task.wait(HackCrawlTime)
-					ReplicatedStorage.RemoteEvent:FireServer("Input", "Crawl", false)
-					humanoid.HipHeight = 0
-					animTrack:Stop()
-				end
-			end
-		end
-	end
+insLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	insScroll.CanvasSize = UDim2.new(0, 0, 0, insLayout.AbsoluteContentSize.Y + 20)
 end)
 
 -- ==========================================
--- GERENCIADOR DE TECLAS DE ATALHO (HOTKEYS)
+-- GERENCIADOR DE INPUTS DE TECLADO (HOTKEYS)
 -- ==========================================
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	if input.KeyCode == Enum.KeyCode.P then
-		toggleFly()
+		toggleFly(flyBtn)
 	elseif input.KeyCode == Enum.KeyCode.N then
-		toggleNoclip()
+		toggleNoclip(noclipBtn)
 	elseif input.KeyCode == Enum.KeyCode.LeftAlt or input.KeyCode == Enum.KeyCode.RightAlt then
 		toggleMouseUnlock()
 	elseif input.KeyCode == inspectorKey then
