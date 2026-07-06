@@ -176,6 +176,10 @@ do
 
 	local function TPPlayerSpawn()
 		if IsThereChar() then
+			local rootPart = Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if rootPart then 
+				rootPart.Anchored = false -- Garante desancoramento ao retornar ao lobby
+			end
 			Players.LocalPlayer.Character:PivotTo(Workspace.LobbySpawnPad.CFrame * CFrame.new(0, 3, 0))
 		end
 	end
@@ -382,23 +386,30 @@ do
 						repeat
 							task.wait()
 							FreeAllPods(v)
-							-- BUG FIX: Corrigido "bnhide()" para a variável booleana "bnhide"
+
+							local character, rootPart, humanoid = GetCharacter()
+							if not rootPart then break end
+
 							if TaskGood() and not bnhide and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" then
 								Tries = Tries + 1
-								if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
-									Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = false
+
+								-- Desancora temporariamente para permitir ajuste fino de posição e reconexão
+								rootPart.Anchored = false
+
+								if rootPart:FindFirstChild("KSAttachmentZVel") then
+									rootPart.KSAttachmentZVel.LinearVelocity.Enabled = false
 								end
 
-								-- Mantém o alinhamento vertical absoluto ao se ajustar ao computador
 								local targetRotationY = select(2, v.CFrame:ToEulerAnglesXYZ())
 								local uprightV = CFrame.new(v.Position) * CFrame.Angles(0, targetRotationY, 0)
-								Players.LocalPlayer.Character:PivotTo(uprightV)
+								character:PivotTo(uprightV)
 
 								ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
 								ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
 								task.wait(0.5)
-								if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
-									Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = true
+
+								if rootPart:FindFirstChild("KSAttachmentZVel") then
+									rootPart.KSAttachmentZVel.LinearVelocity.Enabled = true
 								end
 							elseif TaskGood() and not bnhide and not IsFreeing then
 								CurrentComputer = Computer
@@ -408,38 +419,24 @@ do
 								local uprightV = CFrame.new(v.Position) * CFrame.Angles(0, targetRotationY, 0)
 
 								if AutoHideHack:GetValue() then
-									Players.LocalPlayer.Character:PivotTo(uprightV * CFrame.new(0, 50, 0))
-									ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
-									ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+									character:PivotTo(uprightV * CFrame.new(0, 50, 0))
+									rootPart.Anchored = true -- Ancora de forma estável no ar
 								else
-									-- Se o AutoHide estiver desligado, garante que o corpo fique travado na CFrame correta em pé
-									Players.LocalPlayer.Character:PivotTo(uprightV)
+									character:PivotTo(uprightV)
+									rootPart.Anchored = true -- Ancora de forma estável na altura correta do PC
 								end
-							end
-							if bnhideelapse >= CampHackOut:GetValue() and not IsFreeing then
-								ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
-								lpos = Players.LocalPlayer.Character:GetPivot()
-								OnComputer = false
-								CurrentComputer = nil
-								bnhideelapse = 0
-								return
-							end
-
-							if Tries >= 5 and TaskGood() and not bnhide and not IsFreeing then
-								CurrentComputer = nil
-								OnComputer = false
-								local TriggerGood = false
-								for i2, v2 in ipairs(Triggers) do
-									if v2 and v2.ActionSign.Value == 20 then
-										TriggerGood = true
-									end
-								end
-								if not TriggerGood then
-									ComputerBanList[math.floor(DateTime.now().UnixTimestampMillis)] = Computer
-								end
-								return
+							else
+								-- Se houver interferência (Fera perto ou salvando pod), desancora para mover
+								rootPart.Anchored = false
 							end
 						until not TaskGood() or Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil)
+
+						-- Desancora com segurança após concluir ou sair do computador
+						if IsThereChar() then
+							local root = Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+							if root then root.Anchored = false end
+						end
+
 						if TaskGood() and TeleportInsteadTweenPCFarm:GetValue() then
 							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", false, v.Event)
 							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", false)
