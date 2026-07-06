@@ -255,12 +255,22 @@ do
 		end
 
 		GoTween = function(Part, IsPod, TeleportInstead, TeleportDelay)
+			-- Calcula a rotação Y (Yaw) para manter o personagem perfeitamente em pé
+			local targetRotationY = select(2, Part.CFrame:ToEulerAnglesXYZ())
+			local uprightCFrame = CFrame.new(Part.Position) * CFrame.Angles(0, targetRotationY, 0)
+
 			if not TeleportInstead then
+				-- Desativa temporariamente a restrição física para não arrastar o Tween para baixo
+				local rootPart = Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+				local attZVel = rootPart and rootPart:FindFirstChild("KSAttachmentZVel")
+				local linVel = attZVel and attZVel:FindFirstChildOfClass("LinearVelocity")
+				if linVel then linVel.Enabled = false end
+
 				local Distance = (Players.LocalPlayer.Character.HumanoidRootPart.Position - Part.Position).Magnitude
 				local NewTween = TweenService:Create(
 					Players.LocalPlayer.Character.HumanoidRootPart,
 					TweenInfo.new(Distance / FarmTweenSpeed:GetValue(), Enum.EasingStyle.Linear),
-					{ CFrame = Part.CFrame }
+					{ CFrame = uprightCFrame }
 				)
 				NewTween:Play()
 
@@ -274,7 +284,7 @@ do
 					end
 
 					if bnhideelapse >= CampTweenAnimOut:GetValue() then
-						lpos = Part.CFrame
+						lpos = uprightCFrame
 						bnhideelapse = 0
 						NewTween:Cancel()
 					elseif not TaskGood() then
@@ -287,12 +297,14 @@ do
 						NewTween:Cancel()
 					end
 				until NewTween.PlaybackState == Enum.PlaybackState.Completed or NewTween.PlaybackState == Enum.PlaybackState.Cancelled
+
+				if linVel then linVel.Enabled = true end
 			end
 			if TeleportDelay and TeleportInstead then
 				task.wait(TeleportDelay)
 			end
 			if IsThereChar() then
-				Players.LocalPlayer.Character:PivotTo(Part.CFrame)
+				Players.LocalPlayer.Character:PivotTo(uprightCFrame)
 			end
 		end
 
@@ -370,12 +382,18 @@ do
 						repeat
 							task.wait()
 							FreeAllPods(v)
-							if TaskGood() and not bnhide() and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" then
-								Tries += 1
+							-- BUG FIX: Corrigido "bnhide()" para a variável booleana "bnhide"
+							if TaskGood() and not bnhide and not IsFreeing and TempPlayerStatsModule.CurrentAnimation.Value ~= "Typing" then
+								Tries = Tries + 1
 								if Players.LocalPlayer.Character.HumanoidRootPart:FindFirstChild("KSAttachmentZVel") then
 									Players.LocalPlayer.Character.HumanoidRootPart.KSAttachmentZVel.LinearVelocity.Enabled = false
 								end
-								Players.LocalPlayer.Character:PivotTo(v.CFrame)
+
+								-- Mantém o alinhamento vertical absoluto ao se ajustar ao computador
+								local targetRotationY = select(2, v.CFrame:ToEulerAnglesXYZ())
+								local uprightV = CFrame.new(v.Position) * CFrame.Angles(0, targetRotationY, 0)
+								Players.LocalPlayer.Character:PivotTo(uprightV)
+
 								ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
 								ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
 								task.wait(0.5)
@@ -385,10 +403,17 @@ do
 							elseif TaskGood() and not bnhide and not IsFreeing then
 								CurrentComputer = Computer
 								Tries = 0
+
+								local targetRotationY = select(2, v.CFrame:ToEulerAnglesXYZ())
+								local uprightV = CFrame.new(v.Position) * CFrame.Angles(0, targetRotationY, 0)
+
 								if AutoHideHack:GetValue() then
-									Players.LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
+									Players.LocalPlayer.Character:PivotTo(uprightV * CFrame.new(0, 50, 0))
 									ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", true, v.Event)
 									ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", true)
+								else
+									-- Se o AutoHide estiver desligado, garante que o corpo fique travado na CFrame correta em pé
+									Players.LocalPlayer.Character:PivotTo(uprightV)
 								end
 							end
 							if bnhideelapse >= CampHackOut:GetValue() and not IsFreeing then
@@ -418,7 +443,10 @@ do
 						if TaskGood() and TeleportInsteadTweenPCFarm:GetValue() then
 							ReplicatedStorage.RemoteEvent:FireServer("Input", "Trigger", false, v.Event)
 							ReplicatedStorage.RemoteEvent:FireServer("Input", "Action", false)
-							Players.LocalPlayer.Character:PivotTo(v.CFrame * CFrame.new(0, 50, 0))
+
+							local targetRotationY = select(2, v.CFrame:ToEulerAnglesXYZ())
+							local uprightV = CFrame.new(v.Position) * CFrame.Angles(0, targetRotationY, 0)
+							Players.LocalPlayer.Character:PivotTo(uprightV * CFrame.new(0, 50, 0))
 						end
 						if Computer.Screen.BrickColor == BrickColor.new("Dark green") or (ChosenComputer ~= Computer and ChosenComputer ~= nil) then
 							CurrentComputer = nil
@@ -570,6 +598,7 @@ do
 		local NewFarmTask = coroutine.create(function()
 			if PlayerReady() and not onsurvivorfarm then
 				onsurvivorfarm = true
+				NoclipActive = true -- Força o Noclip para impedir que as mesas empurrem o jogador para baixo
 				local NewAttachment
 				if IsThereChar() then
 					NewAttachment = Instance.new("Attachment")
@@ -597,6 +626,7 @@ do
 					NewAttachment:Destroy()
 				end
 				onsurvivorfarm = false
+				NoclipActive = false -- Restaura o estado normal de colisão
 			end
 		end)
 		coroutine.resume(NewFarmTask)
