@@ -97,80 +97,57 @@ local tabButtons = {}
 -- ==========================================
 -- DEPENDÊNCIAS E CONFIGURAÇÕES DO AUTO-FARM (KOALA SCOPE)
 -- ==========================================
-local KoalaConfig
-local DoSurvivorFarm
+-- Tabela de configurações agora populada dinamicamente
+KoalaConfig = {}
 
-do
-	-- Essas variáveis agora são locais APENAS a este bloco, liberando mais de 35 registradores do escopo global/do arquivo
-	local PU = loadstring(game:HttpGet("https://pastebin.com/raw/xAZ4WQRS"))()
-	local onsurvivorfarm = false
-	local OnBeastFarm = false
-	local TempPlayerStatsModule = nil
-	local Comp = 0
-	local Beast = nil
-	local lpos = nil
-	local bnhide = false
-	local clpos = false
-	local bnhideelapse = 0
-	local noelepse = 0
-	local farmtasks = {}
-
-	KoalaConfig = {
-		AntiAFK = false,
-		ComputerAutoFarm = false,
-		KeepComputer = false,
-		AutoHideHack = false,
-		UseMinimalTeleport = true,
-		TeleportInsteadTweenPCFarm = false,
-		TeleportToFreezePod = false,
-		TeleportToExitDoor = false,
-		FreezePodOnce = true,
-		ExitCancel = false,
-		WaitForSave = false,
-		WaitSaveDelay = 0,
-		ForcedTogglesDisabled = false,
-		FarmTweenSpeed = 16,
-		WaitTweenFast = 8,
-		MinimumDuration = 5,
-		StudsPerDelay = 16,
-		TriggerPrioritization = 1,
-		CampTweenAnimOut = 30,
-		CampHackOut = 30,
-		CampFreezePodOut = 30,
-		CampEscapeOut = 30,
-		TriggerUnCampOut = 5,
-		HideBeastNear = false,
-		HideBeastNearDist = 35,
-		HackBanUnbanTime = 5,
+-- Função fábrica para gerar mocks completos e evitar "attempt to call a nil value"
+local function criarMock(chave, valorPadrao)
+	KoalaConfig[chave] = valorPadrao
+	return {
+		GetValue = function()
+			return KoalaConfig[chave]
+		end,
+		SetValue = function(self, val)
+			KoalaConfig[chave] = val
+		end,
+		SetUserInput = function(self, val)
+			KoalaConfig[chave] = val
+		end,
+		Update = function() end,
+		OnInputChanged = function() end,
+		OnActivated = function() end
 	}
+end
 
-	-- Mocks de compatibilidade localizados
-	local AntiAFK = { GetValue = function() return KoalaConfig.AntiAFK end }
-	local ComputerAutoFarm = { GetValue = function() return KoalaConfig.ComputerAutoFarm end }
-	local KeepComputer = { GetValue = function() return KoalaConfig.KeepComputer end }
-	local AutoHideHack = { GetValue = function() return KoalaConfig.AutoHideHack end }
-	local UseMinimalTeleport = { GetValue = function() return KoalaConfig.UseMinimalTeleport end }
-	local TeleportInsteadTweenPCFarm = { GetValue = function() return KoalaConfig.TeleportInsteadTweenPCFarm end }
-	local TeleportToFreezePod = { GetValue = function() return KoalaConfig.TeleportToFreezePod end }
-	local TeleportToExitDoor = { GetValue = function() return KoalaConfig.TeleportToExitDoor end }
-	local FreezePodOnce = { GetValue = function() return KoalaConfig.FreezePodOnce end }
-	local ExitCancel = { GetValue = function() return KoalaConfig.ExitCancel end }
-	local WaitForSave = { GetValue = function() return KoalaConfig.WaitForSave end }
-	local WaitSaveDelay = { GetValue = function() return KoalaConfig.WaitSaveDelay end }
-	local ForcedTogglesDisabled = { GetValue = function() return KoalaConfig.ForcedTogglesDisabled end }
-	local FarmTweenSpeed = { GetValue = function() return KoalaConfig.FarmTweenSpeed end }
-	local WaitTweenFast = { GetValue = function() return KoalaConfig.WaitTweenFast end }
-	local MinimumDuration = { GetValue = function() return KoalaConfig.MinimumDuration end }
-	local StudsPerDelay = { GetValue = function() return KoalaConfig.StudsPerDelay end }
-	local TriggerPrioritization = { GetValue = function() return KoalaConfig.TriggerPrioritization end }
-	local CampTweenAnimOut = { GetValue = function() return KoalaConfig.CampTweenAnimOut end }
-	local CampHackOut = { GetValue = function() return KoalaConfig.CampHackOut end }
-	local CampFreezePodOut = { GetValue = function() return KoalaConfig.CampFreezePodOut end }
-	local CampEscapeOut = { GetValue = function() return KoalaConfig.CampEscapeOut end }
-	local TriggerUnCampOut = { GetValue = function() return KoalaConfig.TriggerUnCampOut end }
-	local HideBeastNear = { GetValue = function() return KoalaConfig.HideBeastNear end }
-	local HideBeastNearDist = { GetValue = function() return KoalaConfig.HideBeastNearDist end }
-	local HackBanUnbanTime = { GetValue = function() return KoalaConfig.HackBanUnbanTime end }
+-- Mocks de compatibilidade robustos gerados dinamicamente
+local AntiAFK = criarMock("AntiAFK", false)
+local ComputerAutoFarm = criarMock("ComputerAutoFarm", false)
+local KeepComputer = criarMock("KeepComputer", false)
+local AutoHideHack = criarMock("AutoHideHack", false)
+local UseMinimalTeleport = criarMock("UseMinimalTeleport", true)
+local TeleportInsteadTweenPCFarm = criarMock("TeleportInsteadTweenPCFarm", false)
+local TeleportToFreezePod = criarMock("TeleportToFreezePod", false)
+local TeleportToExitDoor = criarMock("TeleportToExitDoor", false)
+local FreezePodOnce = criarMock("FreezePodOnce", true)
+local ExitCancel = criarMock("ExitCancel", false)
+local WaitForSave = criarMock("WaitForSave", false)
+local WaitSaveDelay = criarMock("WaitSaveDelay", 0)
+local ForcedTogglesDisabled = criarMock("ForcedTogglesDisabled", false)
+local FarmTweenSpeed = criarMock("FarmTweenSpeed", 16)
+local WaitTweenFast = criarMock("WaitTweenFast", 8)
+local MinimumDuration = criarMock("MinimumDuration", 5)
+local StudsPerDelay = criarMock("StudsPerDelay", 16)
+local TriggerPrioritization = criarMock("TriggerPrioritization", 1)
+local CampTweenAnimOut = criarMock("CampTweenAnimOut", 30)
+local CampHackOut = criarMock("CampHackOut", 30)
+local CampFreezePodOut = criarMock("CampFreezePodOut", 30)
+local CampEscapeOut = criarMock("CampEscapeOut", 30)
+local TriggerUnCampOut = criarMock("TriggerUnCampOut", 5)
+local HideBeastNear = criarMock("HideBeastNear", false)
+local HideBeastNearDist = criarMock("HideBeastNearDist", 35)
+local HackBanUnbanTime = criarMock("HackBanUnbanTime", 5)
+local AntiPCError = criarMock("AntiPCError", false)
+local UnTieMe = criarMock("UnTieMe", false)
 
 	local function IsThereChar(APlr)
 		local plr = APlr or Players.LocalPlayer
